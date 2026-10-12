@@ -1,0 +1,19 @@
+security:
+    providers:
+        keycloak_users:
+            id: App\Security\KeycloakUserProvider
+
+    firewalls:
+        main:
+            lazy: true
+            stateless: true
+            provider: keycloak_users
+            custom_authenticators:
+                - App\Security\KeycloakAuthenticator
+
+    access_control:
+        # Login, registro y refresco van sin sesión: son los que la crean.
+        - { path: ^/api/auth/, roles: PUBLIC_ACCESS }
+        - { path: ^/public/, roles: PUBLIC_ACCESS }
+        - { path: ^/health, roles: PUBLIC_ACCESS }
+        - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }

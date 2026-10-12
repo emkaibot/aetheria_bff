@@ -1,0 +1,61 @@
+{
+  "realm": "eter",
+  "enabled": true,
+  "displayName": "Aetheria",
+  "accessTokenLifespan": 900,
+  "ssoSessionIdleTimeout": 2592000,
+  "ssoSessionMaxLifespan": 2592000,
+  "registrationAllowed": false,
+  "registrationEmailAsUsername": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "bruteForceProtected": true,
+  "failureFactor": 30,
+  "internationalizationEnabled": true,
+  "supportedLocales": ["es", "en"],
+  "defaultLocale": "es",
+  "smtpServer": {
+    "host": "mailpit",
+    "port": "1025",
+    "from": "no-reply@aetheria.app",
+    "fromDisplayName": "Aetheria"
+  },
+  "clients": [
+    {
+      "clientId": "eter-bff",
+      "name": "Aetheria BFF",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "eter-bff-dev-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "use.refresh.tokens": "true"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "demo@eter.app",
+      "email": "demo@eter.app",
+      "firstName": "Demo",
+      "lastName": "Jugador",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "demo1234", "temporary": false }]
+    },
+    {
+      "username": "rival@eter.app",
+      "email": "rival@eter.app",
+      "firstName": "Rival",
+      "lastName": "Jugador",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "rival1234", "temporary": false }]
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/Kernel.php'
+
+    App\Security\KeycloakTokenVerifier:
+        arguments:
+            # Interna: por donde el BFF llega a Keycloak dentro de la red de docker.
+            $keycloakUrl: '%env(KEYCLOAK_URL)%'
+            # Pública: la que Keycloak escribe como `iss`, se pida por donde se pida.
+            $keycloakPublicUrl: '%env(KEYCLOAK_PUBLIC_URL)%'
+            $keycloakRealm: '%env(KEYCLOAK_REALM)%'
+            $allowedClients: ['%env(KEYCLOAK_CLIENT_ID)%']
+
+    App\Auth\Infrastructure\Service\KeycloakService:
+        arguments:
+            $keycloakUrl: '%env(KEYCLOAK_URL)%'
+            $keycloakRealm: '%env(KEYCLOAK_REALM)%'
+            $keycloakClientId: '%env(KEYCLOAK_CLIENT_ID)%'
+            $keycloakClientSecret: '%env(KEYCLOAK_CLIENT_SECRET)%'
+            $keycloakAdminUser: '%env(KEYCLOAK_ADMIN_USER)%'
+            $keycloakAdminPassword: '%env(KEYCLOAK_ADMIN_PASSWORD)%'

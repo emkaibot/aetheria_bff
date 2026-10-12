@@ -1,0 +1,19 @@
+# Un bloque por módulo. Sin él el controlador existe y su ruta no: la API
+# contesta 404 y nada apunta a que falte declararlo aquí.
+auth_controllers:
+    resource:
+        path: ../src/Auth/Infrastructure/Controller/
+        namespace: App\Auth\Infrastructure\Controller
+    type: attribute
+
+characters_controllers:
+    resource:
+        path: ../src/Characters/Infrastructure/Controller/
+        namespace: App\Characters\Infrastructure\Controller
+    type: attribute
+
+shared_controllers:
+    resource:
+        path: ../src/Shared/Infrastructure/Controller/
+        namespace: App\Shared\Infrastructure\Controller
+    type: attribute
