@@ -1,0 +1,45 @@
+{
+  "realm": "eter",
+  "enabled": true,
+  "displayName": "Aetheria",
+  "accessTokenLifespan": 900,
+  "ssoSessionIdleTimeout": 2592000,
+  "ssoSessionMaxLifespan": 2592000,
+  "registrationAllowed": false,
+  "registrationEmailAsUsername": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "bruteForceProtected": true,
+  "failureFactor": 10,
+  "internationalizationEnabled": true,
+  "supportedLocales": ["es", "en"],
+  "defaultLocale": "es",
+  "smtpServer": {
+    "host": "${SMTP_HOST:smtp.gmail.com}",
+    "port": "${SMTP_PORT:587}",
+    "starttls": "true",
+    "auth": "true",
+    "user": "${SMTP_USER}",
+    "password": "${SMTP_PASSWORD}",
+    "from": "${SMTP_FROM}",
+    "fromDisplayName": "Aetheria"
+  },
+  "clients": [
+    {
+      "clientId": "eter-bff",
+      "name": "Aetheria BFF",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${KEYCLOAK_CLIENT_SECRET}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "use.refresh.tokens": "true"
+      }
+    }
+  ]
+}

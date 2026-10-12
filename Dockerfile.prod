@@ -1,0 +1,44 @@
+# Imagen de producción del BFF: el código y las dependencias van dentro (en
+# desarrollo se montan desde la máquina). Sin dependencias de desarrollo.
+FROM php:8.3-fpm AS builder
+
+ENV COMPOSER_ALLOW_SUPERUSER=1
+
+RUN apt-get update && apt-get install -y git unzip libpq-dev libonig-dev \
+    && docker-php-ext-install pdo pdo_pgsql mbstring opcache \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+WORKDIR /var/www/html
+
+# Primero el manifiesto: mientras no cambien las dependencias, Docker reutiliza
+# la capa del `composer install` y la imagen se construye en segundos.
+COPY composer.json composer.lock symfony.lock ./
+RUN composer install --no-dev --no-interaction --no-scripts --no-autoloader --prefer-dist
+
+COPY . .
+RUN composer dump-autoload --no-dev --optimize --classmap-authoritative
+
+
+FROM php:8.3-fpm AS runtime
+
+RUN apt-get update && apt-get install -y libpq-dev libonig-dev \
+    && docker-php-ext-install pdo pdo_pgsql mbstring opcache \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+COPY docker/php/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
+COPY docker/php/opcache.prod.ini /usr/local/etc/php/conf.d/opcache.ini
+COPY docker/php/zz-docker.conf /usr/local/etc/php-fpm.d/zz-docker.conf
+
+WORKDIR /var/www/html
+COPY --from=builder /var/www/html .
+COPY docker/php/entrypoint.prod.sh /usr/local/bin/entrypoint.sh
+
+RUN mkdir -p var/cache var/log \
+    && chmod +x /usr/local/bin/entrypoint.sh \
+    && chown -R www-data:www-data var
+
+EXPOSE 9000
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["php-fpm"]

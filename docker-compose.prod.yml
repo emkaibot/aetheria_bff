@@ -1,0 +1,115 @@
+# Producción (Dokploy). Los secretos van en la pestaña Environment del servicio
+# en Dokploy, que los escribe en el .env que lee este fichero: ver
+# .env.prod.example. Los dominios se asignan en Dokploy (pestaña Domains):
+#   API  → servicio `nginx`,    puerto 80   (https://$API_HOST)
+#   Auth → servicio `keycloak`, puerto 8080 (https://$AUTH_HOST)
+#
+# Sin Mailpit ni Adminer, y con el realm de producción (sin cuentas de prueba).
+
+services:
+  php:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    restart: unless-stopped
+    environment:
+      APP_ENV: prod
+      APP_DEBUG: "0"
+      APP_SECRET: ${APP_SECRET}
+      DATABASE_URL: postgresql://eter:${POSTGRES_PASSWORD}@db:5432/eter?serverVersion=16&charset=utf8
+      DEFAULT_URI: https://${API_HOST}
+      # La app es nativa y no manda Origin; esto sólo sirve si un día hay web.
+      CORS_ALLOW_ORIGIN: ${CORS_ALLOW_ORIGIN:-^$$}
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_PUBLIC_URL: https://${AUTH_HOST}
+      KEYCLOAK_REALM: eter
+      KEYCLOAK_CLIENT_ID: eter-bff
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      KEYCLOAK_ADMIN_USER: ${KEYCLOAK_ADMIN_USER:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+
+  nginx:
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx
+    restart: unless-stopped
+    depends_on:
+      - php
+    expose:
+      - "80"
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: eter
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: eter
+      LANG: C.UTF-8
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "eter", "-d", "eter"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    restart: unless-stopped
+    # Modo producción. `--import-realm` sólo crea el realm la primera vez; con
+    # el realm ya creado no hace nada (los cambios van por configure-realm.sh).
+    command: ["start", "--import-realm"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      # Traefik termina el TLS y le habla por http; el `iss` de los tokens es
+      # siempre la URL pública, se pidan por donde se pidan.
+      KC_HOSTNAME: https://${AUTH_HOST}
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_HEALTH_ENABLED: "true"
+      # Los usa el realm al importarse (${...} en eter-realm.json).
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM: ${SMTP_FROM}
+    volumes:
+      - ./docker/keycloak-prod:/opt/keycloak/data/import:ro
+      - ./docker/keycloak/configure-realm.sh:/opt/keycloak/bin/configure-realm.sh:ro
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    expose:
+      - "8080"
+
+  keycloak-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: ${KC_DB_PASSWORD}
+      POSTGRES_DB: keycloak
+    volumes:
+      - keycloak_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  db_data:
+  keycloak_db_data:
