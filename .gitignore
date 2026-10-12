@@ -20,3 +20,6 @@
 /phpunit.xml
 /.phpunit.cache/
 ###< phpunit/phpunit ###
+
+# Valores reales de producción (se pegan en Dokploy). No se versionan.
+/.env.prod
