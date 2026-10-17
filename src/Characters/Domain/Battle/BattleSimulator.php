@@ -36,21 +36,22 @@ final class BattleSimulator
 
     public function __construct(private readonly Rng $rng = new Rng()) {}
 
-    public function fight(Character $character, Boss $boss): BattleResult
+    /** @param \App\Characters\Domain\Item[] $items el equipo del héroe */
+    public function fight(Character $character, Boss $boss, array $items = []): BattleResult
     {
-        return $this->simulate($character->getName(), $character->getClass(), $character->getEnergy(), $boss);
+        return $this->simulate($character->getName(), $character->getClass(), $character->getEnergy(), $boss, null, $items);
     }
 
     /**
      * Sin entidad: lo usa `make balance` para probar niveles sin crear
      * personajes. `$bossStats` sustituye las del jefe al calibrarlo.
      */
-    public function simulate(string $name, CharacterClass $class, int $energy, Boss $boss, ?Stats $bossStats = null): BattleResult
+    public function simulate(string $name, CharacterClass $class, int $energy, Boss $boss, ?Stats $bossStats = null, array $items = []): BattleResult
     {
         $this->log   = [];
         $this->round = 0;
 
-        $hero  = new Fighter($name, Progression::stats($class, $energy), Perk::unlockedBy($energy));
+        $hero  = new Fighter($name, Progression::stats($class, $energy, $items), Perk::unlockedBy($energy));
         $enemy = new Fighter($boss->name(), $bossStats ?? $boss->stats());
 
         while ($hero->alive() && $enemy->alive() && $this->round < self::MAX_ROUNDS) {

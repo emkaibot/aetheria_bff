@@ -39,9 +39,12 @@ Los puertos están desplazados +200 respecto a goveo para poder tener los dos le
 - **Ventajas** por saldo de éter (se pierden si el saldo baja): 25 ⚡ +8% ataque · 75 🪨 −10% daño ·
   150 🐈 esquiva 10% · 300 🎯 crítico 15% · 500 💨 segundo aliento · 800 🩸 robo de vida ·
   1200 🌟 +15% a todo · 2000 👑 primer golpe x3.
+- **Éter**: sólo se da o se quita a mano. Da nivel y ventajas; los combates no lo tocan.
 - **Jefes**: 7, en orden; cada héroe desbloquea el siguiente al vencer al anterior. Ganar da
-  éter; perder quita una cuarta parte de la recompensa (nunca deja en negativo).
-- Todo cambio de éter (manual o de combate) queda en el **histórico** con el saldo resultante.
+  **oro**; perder no quita nada.
+- **Tienda**: el oro se gasta en equipo (7 objetos), una vez por héroe, que mejora sus
+  estadísticas para siempre.
+- Todo cambio de éter queda en el **histórico** con el saldo resultante.
 - `make balance` simula combates de cada clase contra cada jefe para ajustar números.
 
 ## API (todas bajo sesión salvo `/api/auth/*` y `/public/*`)
@@ -54,5 +57,6 @@ Los puertos están desplazados +200 respecto a goveo para poder tener los dos le
 | GET/PATCH/DELETE | `/api/characters/{id}` | ficha / editar `{name?, class?}` / borrar |
 | GET/POST | `/api/characters/{id}/movements` | histórico paginado / `{amount, note?}` con signo |
 | GET | `/api/characters/{id}/bosses` | jefes con estado para ese héroe |
-| POST | `/api/characters/{id}/battles` | `{boss}` → registro del combate + movimiento |
-| GET | `/public/catalog` | clases, ventajas, jefes y reglas |
+| POST | `/api/characters/{id}/battles` | `{boss}` → registro del combate + oro ganado |
+| POST | `/api/characters/{id}/items` | `{item}` → comprar equipo con oro |
+| GET | `/public/catalog` | clases, ventajas, jefes, tienda y reglas |

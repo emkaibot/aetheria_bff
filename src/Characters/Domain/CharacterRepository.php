@@ -29,4 +29,12 @@ interface CharacterRepository
      * @return array<string, array<string, array{victories: int, defeats: int}>> characterId => bossId => récord
      */
     public function battleRecords(array $characterIds): array;
+
+    /**
+     * El equipo de cada héroe.
+     *
+     * @param  string[] $characterIds
+     * @return array<string, Item[]> characterId => objetos
+     */
+    public function itemsFor(array $characterIds): array;
 }

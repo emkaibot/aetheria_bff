@@ -38,6 +38,10 @@ class Character
     #[ORM\Column(type: 'integer', options: ['default' => 0])]
     private int $energy = 0;
 
+    /** Oro: se gana venciendo jefes y se gasta en la tienda. No tiene histórico. */
+    #[ORM\Column(type: 'integer', options: ['default' => 0])]
+    private int $gold = 0;
+
     #[ORM\Column(name: 'created_at', type: 'datetimetz_immutable')]
     private \DateTimeImmutable $createdAt;
 
@@ -59,6 +63,7 @@ class Character
     public function getName(): string                  { return $this->name; }
     public function getClass(): CharacterClass         { return $this->class; }
     public function getEnergy(): int                   { return $this->energy; }
+    public function getGold(): int                     { return $this->gold; }
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
     public function getUpdatedAt(): \DateTimeImmutable { return $this->updatedAt; }
 
@@ -95,6 +100,21 @@ class Character
         $this->updatedAt = new \DateTimeImmutable();
 
         return $this->energy;
+    }
+
+    public function earnGold(int $amount): void
+    {
+        $this->gold     += max(0, $amount);
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    public function spendGold(int $amount): void
+    {
+        if ($amount > $this->gold) {
+            throw new NotEnoughGold($this->gold, $amount);
+        }
+        $this->gold     -= $amount;
+        $this->updatedAt = new \DateTimeImmutable();
     }
 
     private static function validName(string $name): string

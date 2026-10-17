@@ -8,6 +8,7 @@ use App\Characters\Domain\Battle\Boss;
 use App\Characters\Domain\Character;
 use App\Characters\Domain\CharacterClass;
 use App\Characters\Domain\EnergyMovement;
+use App\Characters\Domain\Item;
 use App\Characters\Domain\Perk;
 use App\Characters\Domain\Progression;
 
@@ -17,8 +18,11 @@ use App\Characters\Domain\Progression;
  */
 final class CharacterPresenter
 {
-    /** @param array<string, array{victories: int, defeats: int}> $records bossId => récord */
-    public static function character(Character $c, array $records = []): array
+    /**
+     * @param array<string, array{victories: int, defeats: int}> $records bossId => récord
+     * @param Item[] $items el equipo que tiene
+     */
+    public static function character(Character $c, array $records = [], array $items = []): array
     {
         $energy = $c->getEnergy();
         $next   = Perk::nextFor($energy);
@@ -31,8 +35,10 @@ final class CharacterPresenter
             'name'        => $c->getName(),
             'class'       => self::classRef($c->getClass()),
             'energy'      => $energy,
+            'gold'        => $c->getGold(),
+            'items'       => array_map(fn (Item $i) => $i->value, $items),
             'progression' => Progression::describe($energy),
-            'stats'       => Progression::stats($c->getClass(), $energy)->toArray(),
+            'stats'       => Progression::stats($c->getClass(), $energy, $items)->toArray(),
             'perks'       => array_map(fn (Perk $p) => self::perk($p, $energy), Perk::cases()),
             'next_perk'   => $next === null ? null : self::perk($next, $energy) + ['missing' => $next->threshold() - $energy],
             'record'      => [
@@ -77,6 +83,22 @@ final class CharacterPresenter
         return $out;
     }
 
+    public static function item(Item $i, ?array $owned = null): array
+    {
+        $out = [
+            'id'          => $i->value,
+            'name'        => $i->label(),
+            'emoji'       => $i->emoji(),
+            'price'       => $i->price(),
+            'description' => $i->description(),
+        ];
+        if ($owned !== null) {
+            $out['owned'] = in_array($i, $owned, true);
+        }
+
+        return $out;
+    }
+
     public static function classRef(CharacterClass $class): array
     {
         return ['id' => $class->value, 'name' => $class->label(), 'emoji' => $class->emoji()];
@@ -105,8 +127,7 @@ final class CharacterPresenter
             'lore'              => $b->lore(),
             'stats'             => $b->stats()->toArray(),
             'recommended_level' => $b->recommendedLevel(),
-            'reward'            => $b->reward(),
-            'penalty'           => $b->penalty(),
+            'gold'              => $b->gold(),
             'special'           => $b->specialName(),
             'requires'          => $b->previous()?->value,
         ];

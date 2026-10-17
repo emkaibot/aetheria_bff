@@ -91,23 +91,18 @@ enum Boss: string
         };
     }
 
-    /** Éter que se gana al vencer. Al perder se pierde una cuarta parte. */
-    public function reward(): int
+    /** Oro que se gana al vencerlo. Perder no quita nada: el oro sólo sube. */
+    public function gold(): int
     {
         return match ($this) {
-            self::RatQueen => 15,
-            self::Goblin   => 35,
+            self::RatQueen => 20,
+            self::Goblin   => 40,
             self::Skeleton => 70,
-            self::Spider   => 120,
-            self::Golem    => 220,
-            self::Lich     => 360,
-            self::Dragon   => 700,
+            self::Spider   => 110,
+            self::Golem    => 170,
+            self::Lich     => 260,
+            self::Dragon   => 420,
         };
-    }
-
-    public function penalty(): int
-    {
-        return (int) ceil($this->reward() / 4);
     }
 
     public function specialName(): string

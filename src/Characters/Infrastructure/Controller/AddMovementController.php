@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Characters\Infrastructure\Controller;
 
 use App\Characters\Application\EnergyLedger;
-use App\Characters\Domain\CharacterRepository;
 use App\Characters\Domain\InvalidCharacter;
 use App\Characters\Infrastructure\Presenter\CharacterPresenter;
+use App\Characters\Infrastructure\Presenter\CharacterViews;
 use App\Security\Player;
 use App\Shared\Infrastructure\Http\JsonBody;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -27,7 +27,7 @@ final class AddMovementController
     public function __construct(
         private readonly OwnedCharacter $owned,
         private readonly EnergyLedger $ledger,
-        private readonly CharacterRepository $characters,
+        private readonly CharacterViews $views,
     ) {}
 
     public function __invoke(string $id, Request $request, #[CurrentUser] Player $player): JsonResponse
@@ -44,7 +44,7 @@ final class AddMovementController
 
         return new JsonResponse([
             'movement'  => CharacterPresenter::movement($movement),
-            'character' => CharacterPresenter::character($character, $this->characters->battleRecords([$id])[$id] ?? []),
+            'character' => $this->views->one($character),
         ], Response::HTTP_CREATED);
     }
 }

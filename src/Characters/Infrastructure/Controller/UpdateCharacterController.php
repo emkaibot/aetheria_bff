@@ -7,7 +7,7 @@ namespace App\Characters\Infrastructure\Controller;
 use App\Characters\Domain\CharacterClass;
 use App\Characters\Domain\CharacterRepository;
 use App\Characters\Domain\InvalidCharacter;
-use App\Characters\Infrastructure\Presenter\CharacterPresenter;
+use App\Characters\Infrastructure\Presenter\CharacterViews;
 use App\Security\Player;
 use App\Shared\Infrastructure\Http\JsonBody;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -26,6 +26,7 @@ final class UpdateCharacterController
     public function __construct(
         private readonly OwnedCharacter $owned,
         private readonly CharacterRepository $characters,
+        private readonly CharacterViews $views,
     ) {}
 
     public function __invoke(string $id, Request $request, #[CurrentUser] Player $player): JsonResponse
@@ -44,6 +45,6 @@ final class UpdateCharacterController
 
         $this->characters->save($character);
 
-        return new JsonResponse(CharacterPresenter::character($character, $this->characters->battleRecords([$id])[$id] ?? []));
+        return new JsonResponse($this->views->one($character));
     }
 }

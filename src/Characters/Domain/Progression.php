@@ -54,8 +54,13 @@ final class Progression
         ];
     }
 
-    /** Estadísticas finales: clase + crecimiento por nivel + ventajas que tocan números. */
-    public static function stats(CharacterClass $class, int $energy): Stats
+    /**
+     * Estadísticas finales: clase + crecimiento por nivel + ventajas que tocan
+     * números + el equipo comprado en la tienda.
+     *
+     * @param Item[] $items
+     */
+    public static function stats(CharacterClass $class, int $energy, array $items = []): Stats
     {
         $stats = $class->base()->plus($class->growth(), self::level($energy) - 1);
 
@@ -66,6 +71,18 @@ final class Progression
             $stats = $stats->scaled(1.15);
         }
 
-        return $stats;
+        $mult = ['hp' => 1.0, 'atk' => 1.0, 'def' => 1.0, 'spd' => 1.0];
+        foreach ($items as $item) {
+            foreach ($item->bonus() as $stat => $m) {
+                $mult[$stat] *= $m;
+            }
+        }
+
+        return new Stats(
+            (int) round($stats->hp * $mult['hp']),
+            (int) round($stats->atk * $mult['atk']),
+            (int) round($stats->def * $mult['def']),
+            (int) round($stats->spd * $mult['spd']),
+        );
     }
 }

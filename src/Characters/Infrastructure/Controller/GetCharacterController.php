@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Characters\Infrastructure\Controller;
 
-use App\Characters\Domain\CharacterRepository;
-use App\Characters\Infrastructure\Presenter\CharacterPresenter;
+use App\Characters\Infrastructure\Presenter\CharacterViews;
 use App\Security\Player;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -17,14 +16,11 @@ final class GetCharacterController
 {
     public function __construct(
         private readonly OwnedCharacter $owned,
-        private readonly CharacterRepository $characters,
+        private readonly CharacterViews $views,
     ) {}
 
     public function __invoke(string $id, #[CurrentUser] Player $player): JsonResponse
     {
-        $character = $this->owned->get($id, $player);
-        $records   = $this->characters->battleRecords([$id])[$id] ?? [];
-
-        return new JsonResponse(CharacterPresenter::character($character, $records));
+        return new JsonResponse($this->views->one($this->owned->get($id, $player)));
     }
 }

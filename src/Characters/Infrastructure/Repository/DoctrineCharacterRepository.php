@@ -7,6 +7,7 @@ namespace App\Characters\Infrastructure\Repository;
 use App\Characters\Domain\Character;
 use App\Characters\Domain\CharacterRepository;
 use App\Characters\Domain\EnergyMovement;
+use App\Characters\Domain\Item;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -77,10 +78,10 @@ final class DoctrineCharacterRepository implements CharacterRepository
 
         $rows = $this->em->getConnection()->fetchAllAssociative(
             "SELECT character_id::text AS character_id, boss_id,
-                    COUNT(*) FILTER (WHERE kind = 'victory') AS victories,
-                    COUNT(*) FILTER (WHERE kind = 'defeat')  AS defeats
-               FROM energy_movements
-              WHERE character_id IN (?) AND boss_id IS NOT NULL
+                    COUNT(*) FILTER (WHERE won)     AS victories,
+                    COUNT(*) FILTER (WHERE NOT won) AS defeats
+               FROM battles
+              WHERE character_id IN (?)
               GROUP BY character_id, boss_id",
             [$characterIds],
             [ArrayParameterType::STRING],
@@ -95,5 +96,28 @@ final class DoctrineCharacterRepository implements CharacterRepository
         }
 
         return $records;
+    }
+
+    public function itemsFor(array $characterIds): array
+    {
+        if ($characterIds === []) {
+            return [];
+        }
+
+        $rows = $this->em->getConnection()->fetchAllAssociative(
+            'SELECT character_id::text AS character_id, item FROM character_items WHERE character_id IN (?) ORDER BY created_at',
+            [$characterIds],
+            [ArrayParameterType::STRING],
+        );
+
+        $items = [];
+        foreach ($rows as $row) {
+            $item = Item::tryFrom($row['item']);
+            if ($item !== null) {
+                $items[$row['character_id']][] = $item;
+            }
+        }
+
+        return $items;
     }
 }
