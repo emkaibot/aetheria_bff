@@ -1,8 +1,8 @@
 # Producción (Dokploy). Los secretos van en la pestaña Environment del servicio
 # en Dokploy, que los escribe en el .env que lee este fichero: ver
 # .env.prod.example. Los dominios se asignan en Dokploy (pestaña Domains):
-#   API  → servicio `nginx`,    puerto 80   (https://$API_HOST)
-#   Auth → servicio `keycloak`, puerto 8080 (https://$AUTH_HOST)
+#   API  → servicio `nginx`,    puerto 80   (https://$API_HOST,  aetheria-api.duckdns.org)
+#   Auth → servicio `keycloak`, puerto 8080 (https://$AUTH_HOST, aetheria-auth.duckdns.org)
 #
 # Sin Mailpit ni Adminer, y con el realm de producción (sin cuentas de prueba).
 
