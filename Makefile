@@ -1,5 +1,8 @@
 .DEFAULT_GOAL := help
 
+# Alias SSH del VPS de producción (en ~/.ssh/config).
+PROD_SSH ?= emkaibot
+
 ##@ Desarrollo
 
 .PHONY: up
@@ -27,6 +30,13 @@ install: ## composer install
 .PHONY: account
 account: ## Crea una cuenta y le manda el correo de contraseña. Uso: make account EMAIL=ana@x.com [NAME=Ana]
 	docker compose exec php php bin/console eter:account:create $(EMAIL) $(if $(NAME),--name="$(NAME)")
+
+.PHONY: account-prod
+account-prod: ## Igual que `account`, pero en PRODUCCIÓN (por SSH al VPS). Uso: make account-prod EMAIL=ana@x.com [NAME=Ana]
+	@test -n "$(EMAIL)" || (echo "Falta EMAIL. Uso: make account-prod EMAIL=ana@x.com [NAME=Ana]" && exit 1)
+	@ssh $(PROD_SSH) 'c=$$(docker ps -q --filter "label=com.docker.compose.service=php" --filter "label=com.docker.compose.project" | while read id; do docker inspect -f "{{index .Config.Labels \"com.docker.compose.project\"}} {{.Name}}" $$id; done | grep "^aetheria-bff" | head -1 | cut -d/ -f2); \
+		test -n "$$c" || { echo "No encuentro el contenedor php de producción (¿está desplegado?)"; exit 1; }; \
+		docker exec $$c php bin/console eter:account:create $(EMAIL) $(if $(NAME),--name="$(NAME)")'
 
 .PHONY: keycloak-restart
 keycloak-restart: ## Recrea Keycloak para que lea .env.local y le aplica la configuración
