@@ -1,6 +1,9 @@
 # Imagen de producción del BFF: el código y las dependencias van dentro (en
 # desarrollo se montan desde la máquina). Sin dependencias de desarrollo.
-FROM php:8.3-fpm AS builder
+# Versión fijada y no `8.3-fpm` (22-10-2026): la 8.3.36 trae el parche de
+# seguridad, y con la etiqueta flotante el servidor puede reutilizar la imagen
+# base en caché y quedarse en una anterior. Al salir otro parche, se sube a mano.
+FROM php:8.3.36-fpm AS builder
 
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
@@ -21,7 +24,7 @@ COPY . .
 RUN composer dump-autoload --no-dev --optimize --classmap-authoritative
 
 
-FROM php:8.3-fpm AS runtime
+FROM php:8.3.36-fpm AS runtime
 
 RUN apt-get update && apt-get install -y libpq-dev libonig-dev \
     && docker-php-ext-install pdo pdo_pgsql mbstring opcache \
