@@ -75,10 +75,10 @@ enum Role: string
     public function specialDescription(): string
     {
         return match ($this) {
-            self::Warrior     => 'Golpe que hace el doble de daño.',
+            self::Warrior     => 'Un golpe de daño x2,6.',
             self::Mage        => 'Daño x1,7 que ignora la defensa del enemigo.',
             self::Rogue       => 'Dos golpes completos seguidos; cada uno puede ser crítico.',
-            self::Cleric      => 'Cura un 18% de su vida al aliado más herido y ataca.',
+            self::Cleric      => 'Cura un 12% de su vida al aliado más herido y ataca.',
             self::Archer      => 'Un disparo crítico seguro: daño x2,4.',
             self::Berserker   => 'Cuanta menos vida le queda, más pega: hasta x2,5.',
             self::Guardian    => 'Atrae los dos siguientes ataques del jefe y golpea.',

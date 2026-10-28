@@ -124,19 +124,20 @@ enum Boss: string
 
     /**
      * Cuánto crece con cada héroe que acompaña al líder (ver BattleSimulator).
-     * Calibrado para que el equipo con el que se suele llegar, al nivel
-     * recomendado, gane algo más de la mitad de las veces.
+     * Calibrado con `make balance --calibrate` para que el equipo típico de
+     * ese momento (héroes, mascotas y equipamiento), al nivel recomendado,
+     * gane algo más de la mitad de las veces.
      */
     public function partyScale(): float
     {
         return match ($this) {
             self::RatQueen => 2.3,
-            self::Goblin   => 1.9,
-            self::Skeleton => 1.75,
-            self::Spider   => 1.6,
-            self::Golem    => 0.9,
-            self::Lich     => 0.8,
-            self::Dragon   => 0.75,
+            self::Goblin   => 2.3,
+            self::Skeleton => 2.5,
+            self::Spider   => 2.55,
+            self::Golem    => 2.35,
+            self::Lich     => 2.3,
+            self::Dragon   => 2.7,
         };
     }
 

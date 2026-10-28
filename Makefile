@@ -63,8 +63,8 @@ db-reset: ## Borra y recrea la base de datos (¡destructivo!)
 ##@ Juego
 
 .PHONY: balance
-balance: ## Simula combates de cada clase contra cada jefe (para equilibrar)
-	docker compose exec php php bin/console eter:balance
+balance: ## Simula combates de cada clase contra cada jefe (para equilibrar). Con ARGS=--calibrate, recalcula la escala de cada jefe
+	docker compose exec php php bin/console eter:balance $(ARGS)
 
 .PHONY: test
 test: ## Tests

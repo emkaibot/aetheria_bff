@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Tests\Characters;
 
 use App\Characters\Domain\Battle\BattleSimulator;
+use App\Characters\Domain\Battle\Benchmark;
 use App\Characters\Domain\Battle\Boss;
 use App\Characters\Domain\Battle\Rng;
 use App\Characters\Domain\CharacterClass;
 use App\Characters\Domain\Hero;
-use App\Characters\Domain\Progression;
 use PHPUnit\Framework\TestCase;
 
 final class BattleSimulatorTest extends TestCase
@@ -63,17 +63,17 @@ final class BattleSimulatorTest extends TestCase
         self::assertSame($bossDown && !$teamDown, $result->won);
     }
 
-    public function testTwoLevelsAboveTheRecommendedOneAlmostAlwaysWins(): void
+    public function testTheTypicalTeamTwoLevelsAboveTheRecommendedOneAlmostAlwaysWins(): void
     {
-        $level  = Boss::Skeleton->recommendedLevel() + 2;
-        $energy = Progression::energyForLevel($level);
-        $wins   = 0;
-        for ($seed = 1; $seed <= 40; $seed++) {
-            $party = array_map(fn (Hero $h) => [$h, $energy], [...Hero::STARTERS, Hero::Sylas, Hero::Thorin]);
-            $wins += (new BattleSimulator(new Rng($seed)))->simulate('T', CharacterClass::Warrior, $energy, Boss::Skeleton, party: $party)->won ? 1 : 0;
-        }
+        foreach ([Boss::Skeleton, Boss::Lich] as $boss) {
+            $level = $boss->recommendedLevel() + 2;
+            $wins  = 0;
+            for ($seed = 1; $seed <= 40; $seed++) {
+                $wins += (new BattleSimulator(new Rng($seed)))->run(Benchmark::team(CharacterClass::Warrior, $boss, $level), $boss, Benchmark::pets($boss, $level))->won ? 1 : 0;
+            }
 
-        self::assertGreaterThanOrEqual(36, $wins);
+            self::assertGreaterThanOrEqual(36, $wins, $boss->value);
+        }
     }
 
     private function fight(int $seed = 7, Boss $boss = Boss::RatQueen): \App\Characters\Domain\Battle\BattleResult

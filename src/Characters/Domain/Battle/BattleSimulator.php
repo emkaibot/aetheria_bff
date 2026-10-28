@@ -293,7 +293,7 @@ final class BattleSimulator
 
         $special = $role->specialName();
         match ($role) {
-            Role::Warrior     => $this->strike($hero, $this->boss, 'special', 2.0, 'usa ' . $special),
+            Role::Warrior     => $this->strike($hero, $this->boss, 'special', 2.6, 'usa ' . $special),
             Role::Mage        => $this->strike($hero, $this->boss, 'special', 1.7, 'lanza ' . $special, ignoreDefense: true),
             Role::Rogue       => $this->multiStrike($hero, 2, 1.0, $special),
             Role::Martial     => $this->multiStrike($hero, 3, 0.6, $special),
@@ -317,7 +317,7 @@ final class BattleSimulator
     private function clericSpecial(Fighter $hero, string $special): void
     {
         $ally   = $this->mostHurt();
-        $healed = $ally->heal((int) round($ally->stats->hp * 0.18 * (1 + $hero->bonus->skill)));
+        $healed = $ally->heal((int) round($ally->stats->hp * 0.12 * (1 + $hero->bonus->skill)));
         $text   = $ally === $hero
             ? sprintf('%s invoca %s y recupera %d de vida.', $hero->name, $special, $healed)
             : sprintf('%s invoca %s: %s recupera %d de vida.', $hero->name, $special, $ally->name, $healed);
