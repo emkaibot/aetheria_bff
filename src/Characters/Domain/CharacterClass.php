@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Characters\Domain;
 
+use App\Characters\Domain\Battle\Role;
+
 /**
  * Las clases. Cada una parte de unas estadísticas y crece distinto por nivel,
  * y tiene un movimiento especial que usa cada tres turnos en combate.
@@ -66,23 +68,24 @@ enum CharacterClass: string
         };
     }
 
-    public function specialName(): string
+    /** Cómo pelea en combate: su especial es el de su papel. */
+    public function role(): Role
     {
         return match ($this) {
-            self::Warrior => 'Tajo brutal',
-            self::Mage    => 'Bola de fuego',
-            self::Rogue   => 'Doble puñalada',
-            self::Cleric  => 'Luz sanadora',
+            self::Warrior => Role::Warrior,
+            self::Mage    => Role::Mage,
+            self::Rogue   => Role::Rogue,
+            self::Cleric  => Role::Cleric,
         };
+    }
+
+    public function specialName(): string
+    {
+        return $this->role()->specialName();
     }
 
     public function specialDescription(): string
     {
-        return match ($this) {
-            self::Warrior => 'Golpe que hace el doble de daño.',
-            self::Mage    => 'Daño x1,7 que ignora la defensa del enemigo.',
-            self::Rogue   => 'Dos golpes completos seguidos; cada uno puede ser crítico.',
-            self::Cleric  => 'Recupera un 14% de la vida y ataca a la vez.',
-        };
+        return $this->role()->specialDescription();
     }
 }

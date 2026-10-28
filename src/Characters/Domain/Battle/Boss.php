@@ -105,6 +105,41 @@ enum Boss: string
         };
     }
 
+    /**
+     * EXP para cada héroe del equipo al vencerlo; perdiendo se llevan un
+     * tercio, para que un muro no deje a nadie atascado.
+     */
+    public function exp(): int
+    {
+        return match ($this) {
+            self::RatQueen => 15,
+            self::Goblin   => 30,
+            self::Skeleton => 50,
+            self::Spider   => 80,
+            self::Golem    => 130,
+            self::Lich     => 200,
+            self::Dragon   => 300,
+        };
+    }
+
+    /**
+     * Cuánto crece con cada héroe que acompaña al líder (ver BattleSimulator).
+     * Calibrado para que el equipo con el que se suele llegar, al nivel
+     * recomendado, gane algo más de la mitad de las veces.
+     */
+    public function partyScale(): float
+    {
+        return match ($this) {
+            self::RatQueen => 2.3,
+            self::Goblin   => 1.9,
+            self::Skeleton => 1.75,
+            self::Spider   => 1.6,
+            self::Golem    => 0.9,
+            self::Lich     => 0.8,
+            self::Dragon   => 0.75,
+        };
+    }
+
     public function specialName(): string
     {
         return match ($this) {

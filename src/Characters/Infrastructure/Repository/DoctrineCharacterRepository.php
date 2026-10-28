@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Characters\Infrastructure\Repository;
 
 use App\Characters\Domain\Character;
+use App\Characters\Domain\CharacterHero;
 use App\Characters\Domain\CharacterRepository;
 use App\Characters\Domain\EnergyMovement;
 use App\Characters\Domain\Item;
@@ -119,5 +120,30 @@ final class DoctrineCharacterRepository implements CharacterRepository
         }
 
         return $items;
+    }
+
+    public function heroesFor(array $characterIds): array
+    {
+        if ($characterIds === []) {
+            return [];
+        }
+
+        /** @var CharacterHero[] $rows */
+        $rows = $this->em->createQueryBuilder()
+            ->select('h')
+            ->from(CharacterHero::class, 'h')
+            ->where('IDENTITY(h.character) IN (:ids)')
+            ->setParameter('ids', $characterIds)
+            ->orderBy('h.createdAt', 'ASC')
+            ->addOrderBy('h.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        $heroes = [];
+        foreach ($rows as $row) {
+            $heroes[$row->getCharacterId()][] = $row;
+        }
+
+        return $heroes;
     }
 }

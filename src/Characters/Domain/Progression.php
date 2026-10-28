@@ -85,4 +85,13 @@ final class Progression
             (int) round($stats->spd * $mult['spd']),
         );
     }
+
+    /**
+     * Las de un héroe del equipo. Su EXP sube por la misma curva que el éter
+     * del líder, así que `level()` y `describe()` valen para los dos.
+     */
+    public static function heroStats(Hero $hero, int $exp): Stats
+    {
+        return $hero->base()->plus($hero->growth(), self::level($exp) - 1);
+    }
 }

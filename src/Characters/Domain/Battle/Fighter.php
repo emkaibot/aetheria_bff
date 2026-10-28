@@ -14,12 +14,20 @@ final class Fighter
     public int $actions = 0;
     public bool $usedSecondWind = false;
     public bool $hasHit = false;
+    /** Ataques del jefe que aún atrae hacia sí (el Muro de escudos del guardián). */
+    public int $taunt = 0;
 
-    /** @param Perk[] $perks */
+    /**
+     * @param string $key   `leader`, el id del héroe o `boss`: así lo nombra el registro
+     * @param Perk[] $perks sólo las tiene el líder
+     */
     public function __construct(
+        public readonly string $key,
         public readonly string $name,
         public readonly Stats $stats,
+        public readonly ?Role $role = null,
         public readonly array $perks = [],
+        public readonly int $level = 1,
     ) {
         $this->hp = $stats->hp;
     }

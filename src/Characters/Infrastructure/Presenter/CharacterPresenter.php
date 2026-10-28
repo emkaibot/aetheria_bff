@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Characters\Infrastructure\Presenter;
 
 use App\Characters\Domain\Battle\Boss;
+use App\Characters\Domain\Battle\Role;
 use App\Characters\Domain\Character;
 use App\Characters\Domain\CharacterClass;
+use App\Characters\Domain\CharacterHero;
 use App\Characters\Domain\EnergyMovement;
+use App\Characters\Domain\Hero;
 use App\Characters\Domain\Item;
 use App\Characters\Domain\Perk;
 use App\Characters\Domain\Progression;
@@ -21,12 +24,15 @@ final class CharacterPresenter
     /**
      * @param array<string, array{victories: int, defeats: int}> $records bossId => récord
      * @param Item[] $items el equipo que tiene
+     * @param CharacterHero[] $heroes su compañía
      */
-    public static function character(Character $c, array $records = [], array $items = []): array
+    public static function character(Character $c, array $records = [], array $items = [], array $heroes = []): array
     {
         $energy = $c->getEnergy();
         $next   = Perk::nextFor($energy);
 
+        $party     = array_values(array_filter($heroes, fn (CharacterHero $h) => $h->isInParty()));
+        $levels    = [Progression::level($energy), ...array_map(fn (CharacterHero $h) => $h->level(), $party)];
         $victories = array_sum(array_column($records, 'victories'));
         $defeats   = array_sum(array_column($records, 'defeats'));
 
@@ -37,6 +43,19 @@ final class CharacterPresenter
             'energy'      => $energy,
             'gold'        => $c->getGold(),
             'items'       => array_map(fn (Item $i) => $i->value, $items),
+            'party'       => array_map(
+                fn (CharacterHero $h) => [
+                    'id'    => $h->getHero()->value,
+                    'name'  => $h->getHero()->label(),
+                    'role'  => self::roleRef($h->getHero()->role()),
+                    'level' => $h->level(),
+                ],
+                $party,
+            ),
+            'heroes_owned' => count($heroes),
+            // Nivel medio de quien pelea (líder y equipo): con él se compara
+            // la dificultad de cada jefe.
+            'team_level'  => (int) round(array_sum($levels) / count($levels)),
             'progression' => Progression::describe($energy),
             'stats'       => Progression::stats($c->getClass(), $energy, $items)->toArray(),
             'perks'       => array_map(fn (Perk $p) => self::perk($p, $energy), Perk::cases()),
@@ -101,7 +120,47 @@ final class CharacterPresenter
 
     public static function classRef(CharacterClass $class): array
     {
-        return ['id' => $class->value, 'name' => $class->label(), 'emoji' => $class->emoji()];
+        return ['id' => $class->value, 'name' => $class->label(), 'emoji' => $class->emoji(), 'role' => $class->role()->value];
+    }
+
+    public static function roleRef(Role $role): array
+    {
+        return ['id' => $role->value, 'name' => $role->label(), 'emoji' => $role->emoji()];
+    }
+
+    /** Un héroe tal y como es en el catálogo: igual para todos los personajes. */
+    public static function hero(Hero $h): array
+    {
+        $boss = $h->unlockedBy();
+
+        return [
+            'id'      => $h->value,
+            'name'    => $h->label(),
+            'role'    => self::roleRef($h->role()),
+            'base'    => $h->base()->toArray(),
+            'growth'  => $h->growth()->toArray(),
+            'special' => ['name' => $h->role()->specialName(), 'description' => $h->role()->specialDescription()],
+            'starter' => in_array($h, Hero::STARTERS, true),
+            'boss'    => $boss === null ? null : ['id' => $boss->value, 'name' => $boss->name(), 'emoji' => $boss->emoji()],
+            'price'   => $h->price(),
+        ];
+    }
+
+    /**
+     * Un héroe visto desde un personaje: si lo tiene, con su nivel, su EXP y
+     * sus estadísticas; si no, cómo conseguirlo.
+     */
+    public static function heroFor(Hero $h, ?CharacterHero $owned): array
+    {
+        $exp = $owned?->getExp() ?? 0;
+
+        return self::hero($h) + [
+            'owned'       => $owned !== null,
+            'in_party'    => $owned?->isInParty() ?? false,
+            'exp'         => $exp,
+            'progression' => Progression::describe($exp),
+            'stats'       => Progression::heroStats($h, $exp)->toArray(),
+        ];
     }
 
     public static function classFull(CharacterClass $class): array
@@ -130,6 +189,7 @@ final class CharacterPresenter
             'gold'              => $b->gold(),
             'special'           => $b->specialName(),
             'requires'          => $b->previous()?->value,
+            'hero'              => ($h = Hero::forBoss($b)) === null ? null : ['id' => $h->value, 'name' => $h->label()],
         ];
 
         if ($status !== null) {

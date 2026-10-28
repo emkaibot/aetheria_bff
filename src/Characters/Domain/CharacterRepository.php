@@ -37,4 +37,12 @@ interface CharacterRepository
      * @return array<string, Item[]> characterId => objetos
      */
     public function itemsFor(array $characterIds): array;
+
+    /**
+     * Los héroes de cada personaje, del primero que consiguió al último.
+     *
+     * @param  string[] $characterIds
+     * @return array<string, CharacterHero[]> characterId => héroes
+     */
+    public function heroesFor(array $characterIds): array;
 }

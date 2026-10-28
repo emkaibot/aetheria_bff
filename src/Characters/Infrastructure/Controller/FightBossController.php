@@ -18,8 +18,10 @@ use Symfony\Component\Routing\Requirement\Requirement;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
 /**
- * Body: `{boss}`. Devuelve el combate entero (`log`) para que la app lo
- * reproduzca, el oro ganado (0 si pierde) y el héroe actualizado.
+ * Body: `{boss}`. Devuelve el combate entero (`log`) y quién peleó (`team`)
+ * para que la app lo reproduzca; lo ganado (oro, EXP de cada héroe del
+ * equipo, niveles subidos y el héroe liberado, si lo hay) y el personaje
+ * actualizado.
  */
 #[Route('/api/characters/{id}/battles', name: 'battles_create', requirements: ['id' => Requirement::UUID], methods: ['POST'])]
 final class FightBossController
@@ -36,7 +38,7 @@ final class FightBossController
         $boss      = Boss::tryFrom(JsonBody::string(JsonBody::of($request), 'boss'))
             ?? throw new InvalidCharacter('Ese jefe no existe.');
 
-        ['result' => $result, 'gold' => $gold] = ($this->fight)($character, $boss);
+        ['result' => $result, 'gold' => $gold, 'exp' => $exp, 'level_ups' => $levelUps, 'unlocked' => $unlocked] = ($this->fight)($character, $boss);
 
         return new JsonResponse([
             'won'         => $result->won,
@@ -44,8 +46,12 @@ final class FightBossController
             'hero_max_hp' => $result->heroMaxHp,
             'boss_max_hp' => $result->bossMaxHp,
             'log'         => $result->log,
+            'team'        => $result->team,
             'boss'        => CharacterPresenter::boss($boss),
             'gold'        => $gold,
+            'exp'         => $exp,
+            'level_ups'   => (object) $levelUps,
+            'unlocked'    => $unlocked === null ? null : CharacterPresenter::hero($unlocked),
             'character'   => $this->views->one($character),
         ]);
     }
