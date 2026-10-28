@@ -11,7 +11,6 @@ use App\Characters\Domain\CharacterClass;
 use App\Characters\Domain\CharacterHero;
 use App\Characters\Domain\EnergyMovement;
 use App\Characters\Domain\Hero;
-use App\Characters\Domain\Item;
 use App\Characters\Domain\Perk;
 use App\Characters\Domain\Pets\CharacterPet;
 use App\Characters\Domain\Progression;
@@ -24,11 +23,10 @@ final class CharacterPresenter
 {
     /**
      * @param array<string, array{victories: int, defeats: int}> $records bossId => récord
-     * @param Item[] $items el equipo que tiene
      * @param CharacterHero[] $heroes su compañía
      * @param CharacterPet[]  $pets   sus mascotas
      */
-    public static function character(Character $c, array $records = [], array $items = [], array $heroes = [], array $pets = [], int $gearCount = 0): array
+    public static function character(Character $c, array $records = [], array $heroes = [], array $pets = [], int $gearCount = 0): array
     {
         $energy = $c->getEnergy();
         $next   = Perk::nextFor($energy);
@@ -43,7 +41,6 @@ final class CharacterPresenter
             'class'       => self::classRef($c->getClass()),
             'energy'      => $energy,
             'gold'        => $c->getGold(),
-            'items'       => array_map(fn (Item $i) => $i->value, $items),
             'party'       => array_map(
                 fn (CharacterHero $h) => [
                     'id'    => $h->getHero()->value,
@@ -61,7 +58,7 @@ final class CharacterPresenter
             'pets_owned'  => count($pets),
             'gear_count'  => $gearCount,
             'progression' => Progression::describe($energy),
-            'stats'       => Progression::stats($c->getClass(), $energy, $items)->toArray(),
+            'stats'       => Progression::stats($c->getClass(), $energy)->toArray(),
             'perks'       => array_map(fn (Perk $p) => self::perk($p, $energy), Perk::cases()),
             'next_perk'   => $next === null ? null : self::perk($next, $energy) + ['missing' => $next->threshold() - $energy],
             'record'      => [
@@ -101,22 +98,6 @@ final class CharacterPresenter
 
         if ($energy !== null) {
             $out['unlocked'] = $energy >= $p->threshold();
-        }
-
-        return $out;
-    }
-
-    public static function item(Item $i, ?array $owned = null): array
-    {
-        $out = [
-            'id'          => $i->value,
-            'name'        => $i->label(),
-            'emoji'       => $i->emoji(),
-            'price'       => $i->price(),
-            'description' => $i->description(),
-        ];
-        if ($owned !== null) {
-            $out['owned'] = in_array($i, $owned, true);
         }
 
         return $out;

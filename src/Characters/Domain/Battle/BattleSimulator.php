@@ -125,7 +125,6 @@ final class BattleSimulator
      * sin crear personajes. `$bossStats` y `$partyScale` sustituyen los del
      * jefe al calibrarlo.
      *
-     * @param \App\Characters\Domain\Item[]     $items
      * @param array<int, array{0: Hero, 1: int}> $party héroe y su EXP
      */
     public function simulate(
@@ -134,11 +133,10 @@ final class BattleSimulator
         int $energy,
         Boss $boss,
         ?Stats $bossStats = null,
-        array $items = [],
         array $party = [],
         ?float $partyScale = null,
     ): BattleResult {
-        $team = [Combatant::leader($name, $class, $energy, $items)];
+        $team = [Combatant::leader($name, $class, $energy)];
         foreach ($party as [$hero, $exp]) {
             $team[] = Combatant::hero($hero, $exp);
         }

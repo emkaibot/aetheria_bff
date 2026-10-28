@@ -43,7 +43,7 @@ final class Lineup
         $pets   = array_values(array_filter($characters->petsFor([$id])[$id] ?? [], fn (CharacterPet $p) => $p->isActive()));
 
         $leaderGear = $worn['leader'] ?? [];
-        $combatants = [Combatant::leader($c->getName(), $c->getClass(), $c->getEnergy(), $characters->itemsFor([$id])[$id] ?? [], Loadout::stats($leaderGear), Loadout::bonus($leaderGear))];
+        $combatants = [Combatant::leader($c->getName(), $c->getClass(), $c->getEnergy(), Loadout::stats($leaderGear), Loadout::bonus($leaderGear))];
         foreach ($party as $h) {
             $mine         = $worn[$h->getHero()->value] ?? [];
             $combatants[] = Combatant::hero($h->getHero(), $h->getExp(), Loadout::stats($mine), Loadout::bonus($mine));

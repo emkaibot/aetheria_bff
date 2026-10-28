@@ -10,7 +10,6 @@ use App\Characters\Domain\CharacterRepository;
 use App\Characters\Domain\EnergyMovement;
 use App\Characters\Domain\Expeditions\Expedition;
 use App\Characters\Domain\Gear\GearItem;
-use App\Characters\Domain\Item;
 use App\Characters\Domain\Pets\CharacterPet;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\EntityManagerInterface;
@@ -100,29 +99,6 @@ final class DoctrineCharacterRepository implements CharacterRepository
         }
 
         return $records;
-    }
-
-    public function itemsFor(array $characterIds): array
-    {
-        if ($characterIds === []) {
-            return [];
-        }
-
-        $rows = $this->em->getConnection()->fetchAllAssociative(
-            'SELECT character_id::text AS character_id, item FROM character_items WHERE character_id IN (?) ORDER BY created_at',
-            [$characterIds],
-            [ArrayParameterType::STRING],
-        );
-
-        $items = [];
-        foreach ($rows as $row) {
-            $item = Item::tryFrom($row['item']);
-            if ($item !== null) {
-                $items[$row['character_id']][] = $item;
-            }
-        }
-
-        return $items;
     }
 
     public function heroesFor(array $characterIds): array

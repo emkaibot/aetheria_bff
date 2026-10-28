@@ -26,7 +26,7 @@ use App\Characters\Domain\Progression;
 
 /**
  * La ficha de uno o varios personajes tal y como sale por la API: con su récord
- * de combates, su equipo y su compañía de héroes, que viven en otras tablas.
+ * de combates, su compañía de héroes y sus mascotas, que viven en otras tablas.
  * En una consulta por tabla aunque sean muchos.
  */
 final class CharacterViews
@@ -43,7 +43,6 @@ final class CharacterViews
     {
         $ids     = array_map(fn (Character $c) => $c->getId(), $list);
         $records = $this->characters->battleRecords($ids);
-        $items   = $this->characters->itemsFor($ids);
         $heroes  = $this->characters->heroesFor($ids);
         $pets    = $this->characters->petsFor($ids);
         $gear    = $this->characters->gearFor($ids);
@@ -52,7 +51,6 @@ final class CharacterViews
             fn (Character $c) => CharacterPresenter::character(
                 $c,
                 $records[$c->getId()] ?? [],
-                $items[$c->getId()] ?? [],
                 $heroes[$c->getId()] ?? [],
                 $pets[$c->getId()] ?? [],
                 count($gear[$c->getId()] ?? []),
@@ -100,7 +98,7 @@ final class CharacterViews
 
         if ($wearer === 'leader') {
             $who       = ['key' => 'leader', 'name' => $c->getName(), 'hero' => null, 'role' => CharacterPresenter::roleRef($c->getClass()->role()), 'level' => Progression::level($c->getEnergy()), 'class' => $c->getClass()->value];
-            $combatant = Combatant::leader($c->getName(), $c->getClass(), $c->getEnergy(), $this->characters->itemsFor([$c->getId()])[$c->getId()] ?? [], Loadout::stats($worn), Loadout::bonus($worn));
+            $combatant = Combatant::leader($c->getName(), $c->getClass(), $c->getEnergy(), Loadout::stats($worn), Loadout::bonus($worn));
         } else {
             $owned = null;
             foreach ($lineup->heroes as $h) {

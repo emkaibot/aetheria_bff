@@ -35,14 +35,6 @@ interface CharacterRepository
     public function battleRecords(array $characterIds): array;
 
     /**
-     * El equipo de cada héroe.
-     *
-     * @param  string[] $characterIds
-     * @return array<string, Item[]> characterId => objetos
-     */
-    public function itemsFor(array $characterIds): array;
-
-    /**
      * Los héroes de cada personaje, del primero que consiguió al último.
      *
      * @param  string[] $characterIds

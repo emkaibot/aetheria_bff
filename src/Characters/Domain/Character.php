@@ -38,7 +38,7 @@ class Character
     #[ORM\Column(type: 'integer', options: ['default' => 0])]
     private int $energy = 0;
 
-    /** Oro: se gana venciendo jefes y se gasta en la tienda. No tiene histórico. */
+    /** Oro: se gana con jefes, expediciones y ventas; se gasta en héroes, mascotas y mejoras. Sin histórico. */
     #[ORM\Column(type: 'integer', options: ['default' => 0])]
     private int $gold = 0;
 

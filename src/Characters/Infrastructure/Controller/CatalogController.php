@@ -12,7 +12,6 @@ use App\Characters\Domain\Gear\Gear;
 use App\Characters\Domain\Gear\Rarity;
 use App\Characters\Domain\Gear\Slot;
 use App\Characters\Domain\Hero;
-use App\Characters\Domain\Item;
 use App\Characters\Domain\Perk;
 use App\Characters\Domain\Pets\Pet;
 use App\Characters\Domain\Progression;
@@ -23,8 +22,8 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * Las reglas del juego: clases, ventajas, jefes, la tienda, los héroes, las
- * mascotas y el equipamiento. Público y sin estado; la
+ * Las reglas del juego: clases, ventajas, jefes, héroes, mascotas y
+ * equipamiento. Público y sin estado; la
  * app lo pide al arrancar para pintar el selector de clase y la guía.
  */
 #[Route('/public/catalog', name: 'catalog', methods: ['GET'])]
@@ -36,7 +35,6 @@ final class CatalogController
             'classes'  => array_map(fn (CharacterClass $c) => CharacterPresenter::classFull($c), CharacterClass::cases()),
             'perks'    => array_map(fn (Perk $p) => CharacterPresenter::perk($p), Perk::cases()),
             'bosses'   => array_map(fn (Boss $b) => CharacterPresenter::boss($b), Boss::cases()),
-            'items'    => array_map(fn (Item $i) => CharacterPresenter::item($i), Item::cases()),
             'heroes'   => array_map(fn (Hero $h) => CharacterPresenter::hero($h), Hero::cases()),
             'pets'     => array_map(fn (Pet $p) => PetPresenter::pet($p), Pet::cases()),
             'gear'     => array_map(fn (Gear $g) => GearPresenter::piece($g), Gear::cases()),

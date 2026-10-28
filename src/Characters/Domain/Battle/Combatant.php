@@ -6,7 +6,6 @@ namespace App\Characters\Domain\Battle;
 
 use App\Characters\Domain\CharacterClass;
 use App\Characters\Domain\Hero;
-use App\Characters\Domain\Item;
 use App\Characters\Domain\Perk;
 use App\Characters\Domain\Progression;
 use App\Characters\Domain\Stats;
@@ -30,14 +29,11 @@ final class Combatant
     ) {}
 
     /**
-     * El líder: clase, éter (nivel y ventajas), objetos de la tienda y lo que
-     * lleve equipado.
-     *
-     * @param Item[] $items
+     * El líder: clase, éter (nivel y ventajas) y lo que lleve equipado.
      */
-    public static function leader(string $name, CharacterClass $class, int $energy, array $items = [], ?Stats $gear = null, Bonus $bonus = new Bonus()): self
+    public static function leader(string $name, CharacterClass $class, int $energy, ?Stats $gear = null, Bonus $bonus = new Bonus()): self
     {
-        $stats = Progression::stats($class, $energy, $items);
+        $stats = Progression::stats($class, $energy);
         if ($gear !== null) {
             $stats = $stats->plus($gear);
         }
