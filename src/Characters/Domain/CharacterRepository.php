@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Characters\Domain;
 
+use App\Characters\Domain\Expeditions\Expedition;
+use App\Characters\Domain\Gear\GearItem;
+use App\Characters\Domain\Pets\CharacterPet;
+
 interface CharacterRepository
 {
     /** El personaje si es de esa cuenta; si no existe o es de otra, null (y la API da 404). */
@@ -45,4 +49,26 @@ interface CharacterRepository
      * @return array<string, CharacterHero[]> characterId => héroes
      */
     public function heroesFor(array $characterIds): array;
+
+    /**
+     * El inventario de cada personaje, del más nuevo al más viejo.
+     *
+     * @param  string[] $characterIds
+     * @return array<string, GearItem[]>
+     */
+    public function gearFor(array $characterIds): array;
+
+    /** Un objeto del inventario de ese personaje, o null si no es suyo. */
+    public function findGear(string $characterId, string $itemId): ?GearItem;
+
+    /**
+     * Las mascotas de cada personaje, de la primera a la última.
+     *
+     * @param  string[] $characterIds
+     * @return array<string, CharacterPet[]>
+     */
+    public function petsFor(array $characterIds): array;
+
+    /** La expedición en marcha (sin recoger) del personaje, si la hay. */
+    public function activeExpedition(string $characterId): ?Expedition;
 }

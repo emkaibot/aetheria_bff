@@ -13,6 +13,7 @@ use App\Characters\Domain\EnergyMovement;
 use App\Characters\Domain\Hero;
 use App\Characters\Domain\Item;
 use App\Characters\Domain\Perk;
+use App\Characters\Domain\Pets\CharacterPet;
 use App\Characters\Domain\Progression;
 
 /**
@@ -25,14 +26,14 @@ final class CharacterPresenter
      * @param array<string, array{victories: int, defeats: int}> $records bossId => récord
      * @param Item[] $items el equipo que tiene
      * @param CharacterHero[] $heroes su compañía
+     * @param CharacterPet[]  $pets   sus mascotas
      */
-    public static function character(Character $c, array $records = [], array $items = [], array $heroes = []): array
+    public static function character(Character $c, array $records = [], array $items = [], array $heroes = [], array $pets = [], int $gearCount = 0): array
     {
         $energy = $c->getEnergy();
         $next   = Perk::nextFor($energy);
 
         $party     = array_values(array_filter($heroes, fn (CharacterHero $h) => $h->isInParty()));
-        $levels    = [Progression::level($energy), ...array_map(fn (CharacterHero $h) => $h->level(), $party)];
         $victories = array_sum(array_column($records, 'victories'));
         $defeats   = array_sum(array_column($records, 'defeats'));
 
@@ -55,7 +56,10 @@ final class CharacterPresenter
             'heroes_owned' => count($heroes),
             // Nivel medio de quien pelea (líder y equipo): con él se compara
             // la dificultad de cada jefe.
-            'team_level'  => (int) round(array_sum($levels) / count($levels)),
+            'team_level'  => Progression::teamLevel($energy, $party),
+            'pets'        => PetPresenter::summary(array_filter($pets, fn (CharacterPet $p) => $p->isActive())),
+            'pets_owned'  => count($pets),
+            'gear_count'  => $gearCount,
             'progression' => Progression::describe($energy),
             'stats'       => Progression::stats($c->getClass(), $energy, $items)->toArray(),
             'perks'       => array_map(fn (Perk $p) => self::perk($p, $energy), Perk::cases()),

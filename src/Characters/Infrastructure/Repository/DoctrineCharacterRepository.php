@@ -8,7 +8,10 @@ use App\Characters\Domain\Character;
 use App\Characters\Domain\CharacterHero;
 use App\Characters\Domain\CharacterRepository;
 use App\Characters\Domain\EnergyMovement;
+use App\Characters\Domain\Expeditions\Expedition;
+use App\Characters\Domain\Gear\GearItem;
 use App\Characters\Domain\Item;
+use App\Characters\Domain\Pets\CharacterPet;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -124,26 +127,68 @@ final class DoctrineCharacterRepository implements CharacterRepository
 
     public function heroesFor(array $characterIds): array
     {
+        return $this->grouped(CharacterHero::class, $characterIds, 'ASC');
+    }
+
+    public function gearFor(array $characterIds): array
+    {
+        return $this->grouped(GearItem::class, $characterIds, 'DESC');
+    }
+
+    public function findGear(string $characterId, string $itemId): ?GearItem
+    {
+        $item = $this->em->find(GearItem::class, $itemId);
+
+        return $item !== null && $item->getCharacterId() === $characterId ? $item : null;
+    }
+
+    public function petsFor(array $characterIds): array
+    {
+        return $this->grouped(CharacterPet::class, $characterIds, 'ASC');
+    }
+
+    public function activeExpedition(string $characterId): ?Expedition
+    {
+        return $this->em->createQueryBuilder()
+            ->select('e')
+            ->from(Expedition::class, 'e')
+            ->where('IDENTITY(e.character) = :id')
+            ->andWhere('e.claimedAt IS NULL')
+            ->setParameter('id', $characterId)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    /**
+     * Filas de una tabla con `character` y `createdAt`, agrupadas por personaje.
+     *
+     * @template T of object
+     * @param  class-string<T> $class
+     * @param  string[]        $characterIds
+     * @return array<string, T[]>
+     */
+    private function grouped(string $class, array $characterIds, string $order): array
+    {
         if ($characterIds === []) {
             return [];
         }
 
-        /** @var CharacterHero[] $rows */
         $rows = $this->em->createQueryBuilder()
-            ->select('h')
-            ->from(CharacterHero::class, 'h')
-            ->where('IDENTITY(h.character) IN (:ids)')
+            ->select('x')
+            ->from($class, 'x')
+            ->where('IDENTITY(x.character) IN (:ids)')
             ->setParameter('ids', $characterIds)
-            ->orderBy('h.createdAt', 'ASC')
-            ->addOrderBy('h.id', 'ASC')
+            ->orderBy('x.createdAt', $order)
+            ->addOrderBy('x.id', $order)
             ->getQuery()
             ->getResult();
 
-        $heroes = [];
+        $out = [];
         foreach ($rows as $row) {
-            $heroes[$row->getCharacterId()][] = $row;
+            $out[$row->getCharacterId()][] = $row;
         }
 
-        return $heroes;
+        return $out;
     }
 }

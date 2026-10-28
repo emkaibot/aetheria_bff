@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Characters\Infrastructure\Controller;
 
+use App\Characters\Application\Kennel;
 use App\Characters\Application\Roster;
 use App\Characters\Domain\Character;
 use App\Characters\Domain\CharacterClass;
@@ -19,13 +20,14 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Component\Uid\Uuid;
 
-/** Body: `{name, class}`. Nace con 0 de éter y con los héroes iniciales en su equipo. */
+/** Body: `{name, class}`. Nace con 0 de éter y con los héroes y la mascota iniciales en su equipo. */
 #[Route('/api/characters', name: 'characters_create', methods: ['POST'])]
 final class CreateCharacterController
 {
     public function __construct(
         private readonly CharacterRepository $characters,
         private readonly Roster $roster,
+        private readonly Kennel $kennel,
         private readonly CharacterViews $views,
     ) {}
 
@@ -37,6 +39,7 @@ final class CreateCharacterController
 
         $character = new Character(Uuid::v7()->toRfc4122(), $player->getId(), JsonBody::string($data, 'name'), $class);
         $this->roster->giveStarters($character);
+        $this->kennel->giveStarters($character);
         $this->characters->save($character);
 
         return new JsonResponse($this->views->one($character), Response::HTTP_CREATED);

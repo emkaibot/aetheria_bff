@@ -94,4 +94,17 @@ final class Progression
     {
         return $hero->base()->plus($hero->growth(), self::level($exp) - 1);
     }
+
+    /**
+     * Nivel medio de quien pelea, el líder y su equipo: con él se mide la
+     * dificultad de un jefe y lo que rinde una expedición.
+     *
+     * @param CharacterHero[] $party
+     */
+    public static function teamLevel(int $energy, array $party): int
+    {
+        $levels = [self::level($energy), ...array_map(fn (CharacterHero $h) => $h->level(), $party)];
+
+        return (int) round(array_sum($levels) / count($levels));
+    }
 }

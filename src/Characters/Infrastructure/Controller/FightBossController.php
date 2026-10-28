@@ -8,6 +8,8 @@ use App\Characters\Application\FightBoss;
 use App\Characters\Domain\Battle\Boss;
 use App\Characters\Domain\InvalidCharacter;
 use App\Characters\Infrastructure\Presenter\CharacterPresenter;
+use App\Characters\Infrastructure\Presenter\GearPresenter;
+use App\Characters\Infrastructure\Presenter\PetPresenter;
 use App\Characters\Infrastructure\Presenter\CharacterViews;
 use App\Security\Player;
 use App\Shared\Infrastructure\Http\JsonBody;
@@ -18,10 +20,10 @@ use Symfony\Component\Routing\Requirement\Requirement;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
 /**
- * Body: `{boss}`. Devuelve el combate entero (`log`) y quién peleó (`team`)
- * para que la app lo reproduzca; lo ganado (oro, EXP de cada héroe del
- * equipo, niveles subidos y el héroe liberado, si lo hay) y el personaje
- * actualizado.
+ * Body: `{boss}`. Devuelve el combate entero (`log`) y quién peleó (`team`,
+ * `pets`) para que la app lo reproduzca; lo ganado (oro, EXP, niveles
+ * subidos, evoluciones, objetos y el héroe y la mascota liberados, si los
+ * hay) y el personaje actualizado.
  */
 #[Route('/api/characters/{id}/battles', name: 'battles_create', requirements: ['id' => Requirement::UUID], methods: ['POST'])]
 final class FightBossController
@@ -38,21 +40,27 @@ final class FightBossController
         $boss      = Boss::tryFrom(JsonBody::string(JsonBody::of($request), 'boss'))
             ?? throw new InvalidCharacter('Ese jefe no existe.');
 
-        ['result' => $result, 'gold' => $gold, 'exp' => $exp, 'level_ups' => $levelUps, 'unlocked' => $unlocked] = ($this->fight)($character, $boss);
+        $won       = ($this->fight)($character, $boss);
+        $result    = $won['result'];
 
         return new JsonResponse([
-            'won'         => $result->won,
-            'rounds'      => $result->rounds,
-            'hero_max_hp' => $result->heroMaxHp,
-            'boss_max_hp' => $result->bossMaxHp,
-            'log'         => $result->log,
-            'team'        => $result->team,
-            'boss'        => CharacterPresenter::boss($boss),
-            'gold'        => $gold,
-            'exp'         => $exp,
-            'level_ups'   => (object) $levelUps,
-            'unlocked'    => $unlocked === null ? null : CharacterPresenter::hero($unlocked),
-            'character'   => $this->views->one($character),
+            'won'          => $result->won,
+            'rounds'       => $result->rounds,
+            'hero_max_hp'  => $result->heroMaxHp,
+            'boss_max_hp'  => $result->bossMaxHp,
+            'log'          => $result->log,
+            'team'         => $result->team,
+            'pets'         => $result->pets,
+            'boss'         => CharacterPresenter::boss($boss),
+            'gold'         => $won['gold'],
+            'exp'          => $won['exp'],
+            'level_ups'    => (object) $won['level_ups'],
+            'evolutions'   => (object) $won['evolutions'],
+            'unlocked'     => $won['unlocked'] === null ? null : CharacterPresenter::hero($won['unlocked']),
+            'unlocked_pet' => $won['unlocked_pet'] === null ? null : PetPresenter::pet($won['unlocked_pet']),
+            'drops'        => array_map(fn ($i) => GearPresenter::item($i), $won['drops']),
+            'sold'         => $won['sold'],
+            'character'    => $this->views->one($character),
         ]);
     }
 }

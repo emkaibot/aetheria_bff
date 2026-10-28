@@ -10,6 +10,7 @@ final class BattleResult
      * @param array<int, array<string, mixed>> $log
      * @param array<int, array{key: string, name: string, hero: ?string, role: ?string, level: int, max_hp: int}> $team
      *        el líder primero y luego su equipo
+     * @param array<int, array{id: string, name: string, stage: int, level: int}> $pets las mascotas que lo acompañaron
      */
     public function __construct(
         public readonly bool $won,
@@ -18,5 +19,6 @@ final class BattleResult
         public readonly int $bossMaxHp,
         public readonly int $rounds,
         public readonly array $team = [],
+        public readonly array $pets = [],
     ) {}
 }

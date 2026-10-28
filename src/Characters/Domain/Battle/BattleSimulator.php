@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace App\Characters\Domain\Battle;
 
-use App\Characters\Domain\Character;
 use App\Characters\Domain\CharacterClass;
-use App\Characters\Domain\CharacterHero;
 use App\Characters\Domain\Hero;
 use App\Characters\Domain\Perk;
-use App\Characters\Domain\Progression;
+use App\Characters\Domain\Pets\Pet;
 use App\Characters\Domain\Stats;
 
 /**
@@ -23,7 +21,9 @@ use App\Characters\Domain\Stats;
  * todos, del más rápido al más lento (en empate, el equipo antes que el jefe).
  * Cada uno usa el especial de su papel cada tres acciones; el jefe ataca a un
  * miembro al azar (o al guardián que lo provoca) y cada cuatro acciones
- * golpea a todo el equipo. Se gana al tumbar al jefe y se pierde cuando cae el
+ * golpea a todo el equipo. Las mascotas no reciben golpes: dan su
+ * bonificación a todos desde el principio y usan su habilidad al empezar las
+ * rondas que les tocan. Se gana al tumbar al jefe y se pierde cuando cae el
  * equipo entero, o si a las 50 rondas el jefe sigue en pie: así una clériga
  * que cura no puede alargar una pelea perdida para siempre.
  *
@@ -48,56 +48,43 @@ final class BattleSimulator
     /** @var Fighter[] el líder primero y luego el equipo, en su orden */
     private array $team = [];
     private Fighter $boss;
+    /** @var array<int, array{0: Pet, 1: int}> mascota y su nivel */
+    private array $pets = [];
+    /** La Mirada del oráculo: el siguiente golpe del equipo es crítico. */
+    private bool $nextCrit = false;
+    private bool $revived = false;
 
     public function __construct(private readonly Rng $rng = new Rng()) {}
 
     /**
-     * @param \App\Characters\Domain\Item[] $items el equipo del líder
-     * @param CharacterHero[]               $party los héroes que lo acompañan
+     * @param Combatant[]                        $team el líder primero
+     * @param array<int, array{0: Pet, 1: int}> $pets las mascotas activas y su nivel
      */
-    public function fight(Character $character, Boss $boss, array $items = [], array $party = []): BattleResult
+    public function run(array $team, Boss $boss, array $pets = [], ?Stats $bossStats = null, ?float $partyScale = null): BattleResult
     {
-        return $this->simulate(
-            $character->getName(),
-            $character->getClass(),
-            $character->getEnergy(),
-            $boss,
-            null,
-            $items,
-            array_map(fn (CharacterHero $h) => [$h->getHero(), $h->getExp()], $party),
-        );
-    }
+        $this->log      = [];
+        $this->round    = 0;
+        $this->pets     = $pets;
+        $this->nextCrit = false;
+        $this->revived  = false;
 
-    /**
-     * Sin entidades: lo usa `make balance` para probar niveles sin crear
-     * personajes. `$bossStats` y `$partyScale` sustituyen los del jefe al
-     * calibrarlo.
-     *
-     * @param \App\Characters\Domain\Item[] $items
-     * @param array<int, array{0: Hero, 1: int}> $party héroe y su EXP
-     */
-    public function simulate(
-        string $name,
-        CharacterClass $class,
-        int $energy,
-        Boss $boss,
-        ?Stats $bossStats = null,
-        array $items = [],
-        array $party = [],
-        ?float $partyScale = null,
-    ): BattleResult {
-        $this->log   = [];
-        $this->round = 0;
-
-        $this->team = [new Fighter('leader', $name, Progression::stats($class, $energy, $items), $class->role(), Perk::unlockedBy($energy), Progression::level($energy))];
-        foreach ($party as [$hero, $exp]) {
-            $this->team[] = new Fighter($hero->value, $hero->label(), Progression::heroStats($hero, $exp), $hero->role(), level: Progression::level($exp));
-        }
-        $this->boss = new Fighter('boss', $boss->name(), self::scaledBoss($bossStats ?? $boss->stats(), count($party) * ($partyScale ?? $boss->partyScale())));
+        [$statMult, $petBonus] = self::petPassives($pets);
+        $this->team = array_map(fn (Combatant $c) => new Fighter(
+            $c->key,
+            $c->name,
+            new Stats($c->stats->hp, $c->stats->atk, (int) round($c->stats->def * $statMult['def']), (int) round($c->stats->spd * $statMult['spd'])),
+            $c->role,
+            $c->perks,
+            $c->level,
+            $c->bonus->plus($petBonus),
+        ), array_values($team));
+        $allies     = count($team) - 1;
+        $this->boss = new Fighter('boss', $boss->name(), self::scaledBoss($bossStats ?? $boss->stats(), $allies * ($partyScale ?? $boss->partyScale())));
 
         while ($this->teamAlive() && $this->boss->alive() && $this->round < self::MAX_ROUNDS) {
             $this->round++;
-            foreach ($this->turnOrder() as $fighter) {
+            $teamFirst = $this->petsAct();
+            foreach ($this->turnOrder($teamFirst) as $fighter) {
                 if (!$this->teamAlive() || !$this->boss->alive()) {
                     break;
                 }
@@ -105,6 +92,9 @@ final class BattleSimulator
                     continue;
                 }
                 $fighter === $this->boss ? $this->bossTurn($boss) : $this->heroTurn($fighter);
+            }
+            if ($this->boss->alive()) {
+                $this->rebirth();
             }
         }
 
@@ -126,7 +116,34 @@ final class BattleSimulator
                 'level'  => $f->level,
                 'max_hp' => $f->stats->hp,
             ], $this->team),
+            pets: array_map(fn (array $p) => ['id' => $p[0]->value, 'name' => $p[0]->name($p[1]), 'stage' => Pet::stage($p[1]), 'level' => $p[1]], $pets),
         );
+    }
+
+    /**
+     * Sin entidades ni equipamiento: lo usa `make balance` para probar niveles
+     * sin crear personajes. `$bossStats` y `$partyScale` sustituyen los del
+     * jefe al calibrarlo.
+     *
+     * @param \App\Characters\Domain\Item[]     $items
+     * @param array<int, array{0: Hero, 1: int}> $party héroe y su EXP
+     */
+    public function simulate(
+        string $name,
+        CharacterClass $class,
+        int $energy,
+        Boss $boss,
+        ?Stats $bossStats = null,
+        array $items = [],
+        array $party = [],
+        ?float $partyScale = null,
+    ): BattleResult {
+        $team = [Combatant::leader($name, $class, $energy, $items)];
+        foreach ($party as [$hero, $exp]) {
+            $team[] = Combatant::hero($hero, $exp);
+        }
+
+        return $this->run($team, $boss, [], $bossStats, $partyScale);
     }
 
     /** `$allies` va ya multiplicado por la escala del jefe, así que puede no ser entero. */
@@ -140,11 +157,108 @@ final class BattleSimulator
         );
     }
 
+    /**
+     * Lo que las mascotas dan a todo el equipo.
+     *
+     * @param  array<int, array{0: Pet, 1: int}> $pets
+     * @return array{0: array{def: float, spd: float}, 1: Bonus}
+     */
+    public static function petPassives(array $pets): array
+    {
+        $mult  = ['def' => 1.0, 'spd' => 1.0];
+        $extra = ['skill' => 0.0, 'healing' => 0.0, 'crit' => 0.0, 'lifesteal' => 0.0];
+        foreach ($pets as [$pet, $level]) {
+            $value = $pet->bonus($level) / 100;
+            $attr  = $pet->bonusAttribute();
+            isset($mult[$attr]) ? $mult[$attr] += $value : $extra[$attr] += $value;
+        }
+
+        return [$mult, new Bonus(crit: $extra['crit'], lifesteal: $extra['lifesteal'], healing: $extra['healing'], skill: $extra['skill'])];
+    }
+
+    /**
+     * Las habilidades de las mascotas que tocan esta ronda. Devuelve si el
+     * equipo actúa entero antes que el jefe (el Aullido plateado).
+     */
+    private function petsAct(): bool
+    {
+        $teamFirst = false;
+        foreach ($this->pets as [$pet, $level]) {
+            $every = $pet->every();
+            if ($every === null || $this->round % $every !== 0 || !$this->boss->alive() || !$this->teamAlive()) {
+                continue;
+            }
+            $name    = $pet->name($level);
+            $special = $pet->specialName();
+            $value   = $pet->specialValue($level) / 100;
+
+            match ($pet) {
+                Pet::Azurion, Pet::Umbra => $this->petStrike($pet, $name, $special, $value),
+                Pet::Lunaris => (function () use (&$teamFirst, $pet, $name, $special): void {
+                    $teamFirst = true;
+                    $this->entry('pet', $pet->value, 'team', 'special', sprintf('%s lanza %s: el equipo actúa primero.', $name, $special));
+                })(),
+                Pet::Noctua => (function () use ($pet, $name, $special): void {
+                    $this->nextCrit = true;
+                    $this->entry('pet', $pet->value, 'team', 'special', sprintf('%s usa %s: el siguiente golpe será crítico.', $name, $special));
+                })(),
+                Pet::Bastion => (function () use ($pet, $name, $special, $value): void {
+                    $shields = [];
+                    foreach ($this->aliveTeam() as $f) {
+                        $amount     = (int) round($f->stats->hp * $value);
+                        $f->shield += $amount;
+                        $shields[$f->key] = $amount;
+                    }
+                    $this->entry('pet', $pet->value, 'team', 'shield', sprintf('%s alza %s: el equipo gana %d de escudo.', $name, $special, array_sum($shields)), heals: $shields);
+                })(),
+                Pet::Solaria => null,
+            };
+        }
+
+        return $teamFirst;
+    }
+
+    private function petStrike(Pet $pet, string $name, string $special, float $mult): void
+    {
+        $alive  = $this->aliveTeam();
+        $avgAtk = array_sum(array_map(fn (Fighter $f) => $f->stats->atk, $alive)) / max(1, count($alive));
+        $damage = max(1, (int) round($avgAtk * $mult * 50 / (50 + $this->boss->stats->def) * $this->rng->between(0.9, 1.1)));
+        $this->boss->hp = max(0, $this->boss->hp - $damage);
+        $this->entry('pet', $pet->value, 'boss', 'special', sprintf('%s usa %s: %d de daño.', $name, $special, $damage), hits: ['boss' => $damage]);
+    }
+
+    /** Renacer de Solaria: una vez por combate, al final de la ronda en que cae alguien. */
+    private function rebirth(): void
+    {
+        if ($this->revived || !$this->teamAlive()) {
+            return;
+        }
+        foreach ($this->pets as [$pet, $level]) {
+            if ($pet !== Pet::Solaria) {
+                continue;
+            }
+            foreach ($this->team as $f) {
+                if (!$f->alive()) {
+                    $this->revived = true;
+                    $f->hp = max(1, (int) round($f->stats->hp * $pet->specialValue($level) / 100));
+                    $this->entry('pet', $pet->value, $f->key, 'heal', sprintf('%s usa %s: %s vuelve al combate con %d de vida.', $pet->name($level), $pet->specialName(), $f->name, $f->hp), heals: [$f->key => $f->hp]);
+                    return;
+                }
+            }
+        }
+    }
+
     /** @return Fighter[] */
-    private function turnOrder(): array
+    private function turnOrder(bool $teamFirst): array
     {
         // Ordenación estable: en empate el equipo (que va antes en la lista) gana.
-        $all = [...$this->team, $this->boss];
+        $team = $this->team;
+        usort($team, fn (Fighter $a, Fighter $b) => $b->stats->spd <=> $a->stats->spd);
+        if ($teamFirst) {
+            return [...$team, $this->boss];
+        }
+
+        $all = [...$team, $this->boss];
         usort($all, fn (Fighter $a, Fighter $b) => $b->stats->spd <=> $a->stats->spd);
 
         return $all;
@@ -203,7 +317,7 @@ final class BattleSimulator
     private function clericSpecial(Fighter $hero, string $special): void
     {
         $ally   = $this->mostHurt();
-        $healed = $ally->heal((int) round($ally->stats->hp * 0.18));
+        $healed = $ally->heal((int) round($ally->stats->hp * 0.18 * (1 + $hero->bonus->skill)));
         $text   = $ally === $hero
             ? sprintf('%s invoca %s y recupera %d de vida.', $hero->name, $special, $healed)
             : sprintf('%s invoca %s: %s recupera %d de vida.', $hero->name, $special, $ally->name, $healed);
@@ -215,7 +329,7 @@ final class BattleSimulator
     {
         $heals = [];
         foreach ($this->aliveTeam() as $ally) {
-            $healed = $ally->heal((int) round($ally->stats->hp * 0.07));
+            $healed = $ally->heal((int) round($ally->stats->hp * 0.07 * (1 + $hero->bonus->skill)));
             if ($healed > 0) {
                 $heals[$ally->key] = $healed;
             }
@@ -293,9 +407,17 @@ final class BattleSimulator
     ): int {
         $actor = $attacker === $this->boss ? 'boss' : 'hero';
 
-        if ($target->has(Perk::Reflexes) && $this->rng->chance(0.10)) {
+        if ($target->dodgeChance() > 0 && $this->rng->chance($target->dodgeChance())) {
             $this->entry($actor, $attacker->key, $target->key, 'dodge', sprintf('%s %s, pero %s lo esquiva.', $attacker->name, $verb, $target->name));
             return 0;
+        }
+
+        if ($action === 'special') {
+            $mult *= 1 + $attacker->bonus->skill;
+        }
+        if ($actor === 'hero' && $this->nextCrit) {
+            $this->nextCrit = false;
+            $forceCrit      = true;
         }
 
         [$damage, $crit] = $this->damage($attacker, $target, $mult, $ignoreDefense, $forceCrit);
@@ -305,8 +427,8 @@ final class BattleSimulator
             : sprintf('%s %s: %d de daño%s.', $attacker->name, $verb, $damage, $suffix);
         $this->entry($actor, $attacker->key, $target->key, $action, $text, hits: [$target->key => $damage], crit: $crit);
 
-        if ($attacker->has(Perk::Vampiric) && $attacker->alive()) {
-            $healed = $attacker->heal((int) round($damage * 0.12));
+        if ($attacker->lifesteal() > 0 && $attacker->alive()) {
+            $healed = $attacker->heal((int) round($damage * $attacker->lifesteal()));
             if ($healed > 0) {
                 $this->entry($actor, $attacker->key, $attacker->key, 'heal', sprintf('%s absorbe %d de vida.', $attacker->name, $healed), heals: [$attacker->key => $healed]);
             }
@@ -318,7 +440,8 @@ final class BattleSimulator
     }
 
     /**
-     * Calcula y aplica el daño, sin escribir nada en el registro.
+     * Calcula y aplica el daño, sin escribir nada en el registro. El escudo
+     * se gasta antes que la vida.
      *
      * @return array{0: int, 1: bool} daño y si fue crítico
      */
@@ -327,9 +450,9 @@ final class BattleSimulator
         $defense = $ignoreDefense ? 0 : $target->stats->def;
         $damage  = $attacker->stats->atk * 50 / (50 + $defense) * $mult * $this->rng->between(0.8, 1.2);
 
-        $crit = $forceCrit || ($attacker->has(Perk::Critical) && $this->rng->chance(0.15));
+        $crit = $forceCrit || ($attacker->critChance() > 0 && $this->rng->chance($attacker->critChance()));
         if ($crit) {
-            $damage *= 2;
+            $damage *= 2 + $attacker->bonus->critDamage;
         }
         if ($attacker->has(Perk::Ascension) && !$attacker->hasHit) {
             $damage *= 3;
@@ -340,7 +463,10 @@ final class BattleSimulator
 
         $damage = max(1, (int) round($damage));
         $attacker->hasHit = true;
-        $target->hp = max(0, $target->hp - $damage);
+
+        $absorbed        = min($target->shield, $damage);
+        $target->shield -= $absorbed;
+        $target->hp      = max(0, $target->hp - ($damage - $absorbed));
 
         return [$damage, $crit];
     }
@@ -361,8 +487,9 @@ final class BattleSimulator
      * `damage` y `heal` son los de antes del equipo (el líder y los totales),
      * para que una app sin actualizar siga pudiendo pintar el combate.
      *
+     * @param string             $actor `hero`, `boss` o `pet`
      * @param array<string, int> $hits  daño por objetivo
-     * @param array<string, int> $heals curación por objetivo
+     * @param array<string, int> $heals curación (o escudo, en `shield`) por objetivo
      */
     private function entry(
         string $actor,
