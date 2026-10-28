@@ -53,6 +53,11 @@ Los puertos están desplazados +200 respecto a goveo para poder tener los dos le
   oro hasta +10, se bloquea y se vende. Las armas son de un papel.
 - **Expediciones AFK**: 5 zonas (se abren al vencer a su jefe) y 3 dificultades. Al recoger se
   reparte según el tiempo pasado, con un límite de 8, 12 o 24 h y venta automática por rareza.
+- **Gremios y raid**: cada personaje puede estar en un gremio (hasta 20). Cada semana el
+  gremio tiene un jefe de raid con vida compartida; cada personaje ataca 3 veces al día
+  (15 rondas, el jefe pega como uno de su nivel) y gana **sellos de incursión** según el daño,
+  más 25 para todos cuando cae. Los sellos pagan estrellas de héroe (+10 % cada una),
+  EXP para las mascotas y el cofre primordial. Nunca éter.
 - Todo cambio de éter queda en el **histórico** con el saldo resultante.
 - `make balance` simula combates del equipo típico de cada momento (`Benchmark`) contra cada
   jefe; con `ARGS=--calibrate`, propone la `partyScale` de cada uno.
@@ -77,4 +82,8 @@ Los puertos están desplazados +200 respecto a goveo para poder tener los dos le
 | GET/POST | `/api/characters/{id}/loadout/{wearer}[/auto]` | lo que lleva puesto `leader` o un héroe / autoequipar |
 | GET/POST | `/api/characters/{id}/expedition` | estado y zonas / salir `{zone, difficulty, limit_hours, autosell}` |
 | POST | `/api/characters/{id}/expedition/claim` | recoger la expedición en marcha |
+| GET/POST | `/api/characters/{id}/guild` | gremio y raid (o gremios a los que unirse) / fundar `{name}` |
+| POST | `/api/characters/{id}/guild/join` · `/guild/leave` | unirse `{guild}` / salir |
+| POST | `/api/characters/{id}/raid/attack` | atacar en la raid (misma forma que un combate) |
+| POST | `/api/characters/{id}/heroes/{hero}/star` · `/pets/{pet}/feed` · `/seals/chest` | gastar sellos |
 | GET | `/public/catalog` | clases, ventajas, jefes, héroes, mascotas, equipamiento y reglas |

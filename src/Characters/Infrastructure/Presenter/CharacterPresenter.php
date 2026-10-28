@@ -41,6 +41,7 @@ final class CharacterPresenter
             'class'       => self::classRef($c->getClass()),
             'energy'      => $energy,
             'gold'        => $c->getGold(),
+            'seals'       => $c->getSeals(),
             'party'       => array_map(
                 fn (CharacterHero $h) => [
                     'id'    => $h->getHero()->value,
@@ -139,12 +140,16 @@ final class CharacterPresenter
     {
         $exp = $owned?->getExp() ?? 0;
 
+        $stars = $owned?->getStars() ?? 1;
+
         return self::hero($h) + [
             'owned'       => $owned !== null,
             'in_party'    => $owned?->isInParty() ?? false,
             'exp'         => $exp,
+            'stars'       => $stars,
+            'star_cost'   => $owned?->nextStarCost(),
             'progression' => Progression::describe($exp),
-            'stats'       => Progression::heroStats($h, $exp)->toArray(),
+            'stats'       => Progression::heroStats($h, $exp, $stars)->toArray(),
         ];
     }
 

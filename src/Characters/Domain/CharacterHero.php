@@ -17,6 +17,9 @@ class CharacterHero
 {
     /** Héroes en el equipo además del líder: diez en combate contando con él. */
     public const PARTY_MAX = 9;
+    public const MAX_STARS = 5;
+    /** Sellos para llegar a cada estrella (índice = estrella). */
+    public const STAR_COSTS = [2 => 10, 3 => 25, 4 => 50, 5 => 100];
 
     #[ORM\Id]
     #[ORM\Column(type: 'guid')]
@@ -35,6 +38,10 @@ class CharacterHero
     #[ORM\Column(name: 'in_party', type: 'boolean', options: ['default' => false])]
     private bool $inParty;
 
+    /** De 1 a 5; cada una por encima de la primera, +10 % a todas sus estadísticas. */
+    #[ORM\Column(type: 'integer', options: ['default' => 1])]
+    private int $stars = 1;
+
     #[ORM\Column(name: 'created_at', type: 'datetimetz_immutable')]
     private \DateTimeImmutable $createdAt;
 
@@ -52,8 +59,20 @@ class CharacterHero
     public function getHero(): Hero      { return $this->hero; }
     public function getExp(): int        { return $this->exp; }
     public function isInParty(): bool    { return $this->inParty; }
+    public function getStars(): int      { return $this->stars; }
     public function level(): int         { return Progression::level($this->exp); }
-    public function stats(): Stats       { return Progression::heroStats($this->hero, $this->exp); }
+    public function stats(): Stats       { return Progression::heroStats($this->hero, $this->exp, $this->stars); }
+
+    /** Sellos de la siguiente estrella, o null si ya tiene todas. */
+    public function nextStarCost(): ?int
+    {
+        return self::STAR_COSTS[$this->stars + 1] ?? null;
+    }
+
+    public function addStar(): void
+    {
+        $this->stars = min(self::MAX_STARS, $this->stars + 1);
+    }
 
     /** Suma EXP y devuelve cuántos niveles ha subido. */
     public function gainExp(int $amount): int

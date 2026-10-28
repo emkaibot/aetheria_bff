@@ -42,6 +42,10 @@ class Character
     #[ORM\Column(type: 'integer', options: ['default' => 0])]
     private int $gold = 0;
 
+    /** Sellos de incursión: se ganan en la raid del gremio y pagan estrellas, mascotas y cofres. */
+    #[ORM\Column(type: 'integer', options: ['default' => 0])]
+    private int $seals = 0;
+
     #[ORM\Column(name: 'created_at', type: 'datetimetz_immutable')]
     private \DateTimeImmutable $createdAt;
 
@@ -64,6 +68,7 @@ class Character
     public function getClass(): CharacterClass         { return $this->class; }
     public function getEnergy(): int                   { return $this->energy; }
     public function getGold(): int                     { return $this->gold; }
+    public function getSeals(): int                    { return $this->seals; }
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
     public function getUpdatedAt(): \DateTimeImmutable { return $this->updatedAt; }
 
@@ -114,6 +119,21 @@ class Character
             throw new NotEnoughGold($this->gold, $amount);
         }
         $this->gold     -= $amount;
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    public function earnSeals(int $amount): void
+    {
+        $this->seals    += max(0, $amount);
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    public function spendSeals(int $amount): void
+    {
+        if ($amount > $this->seals) {
+            throw new NotEnoughSeals($this->seals, $amount);
+        }
+        $this->seals    -= $amount;
         $this->updatedAt = new \DateTimeImmutable();
     }
 

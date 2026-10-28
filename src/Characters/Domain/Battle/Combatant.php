@@ -41,9 +41,9 @@ final class Combatant
         return new self('leader', $name, $stats, $class->role(), Progression::level($energy), Perk::unlockedBy($energy), $bonus);
     }
 
-    public static function hero(Hero $hero, int $exp, ?Stats $gear = null, Bonus $bonus = new Bonus()): self
+    public static function hero(Hero $hero, int $exp, ?Stats $gear = null, Bonus $bonus = new Bonus(), int $stars = 1): self
     {
-        $stats = Progression::heroStats($hero, $exp);
+        $stats = Progression::heroStats($hero, $exp, $stars);
         if ($gear !== null) {
             $stats = $stats->plus($gear);
         }

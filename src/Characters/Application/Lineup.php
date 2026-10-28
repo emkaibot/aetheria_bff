@@ -46,7 +46,7 @@ final class Lineup
         $combatants = [Combatant::leader($c->getName(), $c->getClass(), $c->getEnergy(), Loadout::stats($leaderGear), Loadout::bonus($leaderGear))];
         foreach ($party as $h) {
             $mine         = $worn[$h->getHero()->value] ?? [];
-            $combatants[] = Combatant::hero($h->getHero(), $h->getExp(), Loadout::stats($mine), Loadout::bonus($mine));
+            $combatants[] = Combatant::hero($h->getHero(), $h->getExp(), Loadout::stats($mine), Loadout::bonus($mine), $h->getStars());
         }
 
         return new self($combatants, $party, $pets, $heroes, $gear);

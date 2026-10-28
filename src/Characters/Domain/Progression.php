@@ -73,9 +73,11 @@ final class Progression
      * Las de un héroe del equipo. Su EXP sube por la misma curva que el éter
      * del líder, así que `level()` y `describe()` valen para los dos.
      */
-    public static function heroStats(Hero $hero, int $exp): Stats
+    public static function heroStats(Hero $hero, int $exp, int $stars = 1): Stats
     {
-        return $hero->base()->plus($hero->growth(), self::level($exp) - 1);
+        $stats = $hero->base()->plus($hero->growth(), self::level($exp) - 1);
+
+        return $stars > 1 ? $stats->scaled(1 + 0.1 * ($stars - 1)) : $stats;
     }
 
     /**

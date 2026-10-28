@@ -7,6 +7,8 @@ namespace App\Characters\Infrastructure\Presenter;
 use App\Characters\Application\Expeditions;
 use App\Characters\Application\Inventory;
 use App\Characters\Application\Lineup;
+use App\Characters\Application\Raids;
+use App\Characters\Application\Seals;
 use App\Characters\Domain\Battle\Combatant;
 use App\Characters\Domain\Character;
 use App\Characters\Domain\CharacterHero;
@@ -19,6 +21,10 @@ use App\Characters\Domain\Gear\GearItem;
 use App\Characters\Domain\Gear\Loadout;
 use App\Characters\Domain\Gear\Rarity;
 use App\Characters\Domain\Gear\Slot;
+use App\Characters\Domain\Guilds\Guild;
+use App\Characters\Domain\Guilds\GuildMember;
+use App\Characters\Domain\Guilds\GuildRepository;
+use App\Characters\Domain\Guilds\Raid;
 use App\Characters\Domain\Hero;
 use App\Characters\Domain\InvalidGear;
 use App\Characters\Domain\Pets\Pet;
@@ -74,6 +80,7 @@ final class CharacterViews
             'items'     => array_map(fn (Hero $h) => CharacterPresenter::heroFor($h, $owned[$h->value] ?? null), Hero::cases()),
             'party_max' => CharacterHero::PARTY_MAX,
             'gold'      => $c->getGold(),
+            'seals'     => $c->getSeals(),
         ];
     }
 
@@ -110,7 +117,7 @@ final class CharacterViews
                 throw new InvalidGear('Ese héroe no está en tu compañía.');
             }
             $who       = ['key' => $wearer, 'name' => $owned->getHero()->label(), 'hero' => $wearer, 'role' => CharacterPresenter::roleRef($owned->getHero()->role()), 'level' => $owned->level(), 'class' => null];
-            $combatant = Combatant::hero($owned->getHero(), $owned->getExp(), Loadout::stats($worn), Loadout::bonus($worn));
+            $combatant = Combatant::hero($owned->getHero(), $owned->getExp(), Loadout::stats($worn), Loadout::bonus($worn), $owned->getStars());
         }
 
         $slots = [];
@@ -157,6 +164,8 @@ final class CharacterViews
             'items'      => array_map(fn (Pet $p) => PetPresenter::petFor($p, $owned[$p->value] ?? null), Pet::cases()),
             'active_max' => Pet::ACTIVE_MAX,
             'gold'       => $c->getGold(),
+            'seals'      => $c->getSeals(),
+            'feed'       => ['cost' => Seals::FEED_COST, 'exp' => Seals::FEED_EXP],
         ];
     }
 
@@ -190,5 +199,67 @@ final class CharacterViews
             'leader'       => ['name' => $c->getName(), 'class' => $c->getClass()->value, 'level' => Progression::level($c->getEnergy())],
             'gold'         => $c->getGold(),
         ];
+    }
+
+    /**
+     * El gremio de un personaje con su raid de la semana; si no está en
+     * ninguno, los gremios a los que puede unirse.
+     */
+    public function guild(Character $c, GuildRepository $guilds, Raids $raids): array
+    {
+        $member = $guilds->membershipOf($c->getId());
+        $out    = [
+            'seals'    => $c->getSeals(),
+            'costs'    => ['feed' => Seals::FEED_COST, 'feed_exp' => Seals::FEED_EXP, 'chest' => Seals::CHEST_COST],
+            'guild'    => null,
+            'raid'     => null,
+            'guilds'   => [],
+            'max'      => Guild::MAX_MEMBERS,
+        ];
+
+        if ($member === null) {
+            $out['guilds'] = array_map(fn (array $r) => [
+                'id'      => $r['guild']->getId(),
+                'name'    => $r['guild']->getName(),
+                'members' => $r['members'],
+            ], $guilds->listWithCounts(30));
+
+            return $out;
+        }
+
+        $guild = $member->getGuild();
+        $raid  = $raids->current($guild);
+        $mine  = $c->getId();
+
+        $out['guild'] = [
+            'id'        => $guild->getId(),
+            'name'      => $guild->getName(),
+            'is_leader' => $member->isLeader(),
+            'members'   => array_map(fn (GuildMember $m) => [
+                'character_id' => $m->getCharacter()->getId(),
+                'name'         => $m->getCharacter()->getName(),
+                'class'        => CharacterPresenter::classRef($m->getCharacter()->getClass()),
+                'level'        => Progression::level($m->getCharacter()->getEnergy()),
+                'leader'       => $m->isLeader(),
+                'me'           => $m->getCharacter()->getId() === $mine,
+            ], $guilds->members($guild)),
+        ];
+
+        $ends = new \DateTimeImmutable('monday next week 00:00', new \DateTimeZone('UTC'));
+        $out['raid'] = [
+            'week'            => $raid->getWeek(),
+            'boss'            => CharacterPresenter::boss($raid->getBoss()),
+            'max_hp'          => $raid->getMaxHp(),
+            'hp'              => $raid->hp(),
+            'damage'          => $raid->getDamage(),
+            'defeated'        => $raid->getDefeatedAt() !== null,
+            'ends_at'         => $ends->format(DATE_ATOM),
+            'attacks_left'    => $raids->attacksLeft($raid, $c),
+            'attacks_per_day' => Raid::ATTACKS_PER_DAY,
+            'kill_seals'      => Raid::KILL_SEALS,
+            'ranking'         => array_map(fn (array $r) => $r + ['me' => $r['character_id'] === $mine], $guilds->contributions($raid)),
+        ];
+
+        return $out;
     }
 }

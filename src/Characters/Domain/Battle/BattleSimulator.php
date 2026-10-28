@@ -60,7 +60,7 @@ final class BattleSimulator
      * @param Combatant[]                        $team el líder primero
      * @param array<int, array{0: Pet, 1: int}> $pets las mascotas activas y su nivel
      */
-    public function run(array $team, Boss $boss, array $pets = [], ?Stats $bossStats = null, ?float $partyScale = null): BattleResult
+    public function run(array $team, Boss $boss, array $pets = [], ?Stats $bossStats = null, ?float $partyScale = null, int $maxRounds = self::MAX_ROUNDS): BattleResult
     {
         $this->log      = [];
         $this->round    = 0;
@@ -81,7 +81,7 @@ final class BattleSimulator
         $allies     = count($team) - 1;
         $this->boss = new Fighter('boss', $boss->name(), self::scaledBoss($bossStats ?? $boss->stats(), $allies * ($partyScale ?? $boss->partyScale())));
 
-        while ($this->teamAlive() && $this->boss->alive() && $this->round < self::MAX_ROUNDS) {
+        while ($this->teamAlive() && $this->boss->alive() && $this->round < $maxRounds) {
             $this->round++;
             $teamFirst = $this->petsAct();
             foreach ($this->turnOrder($teamFirst) as $fighter) {
@@ -99,7 +99,9 @@ final class BattleSimulator
         }
 
         if ($this->teamAlive() && $this->boss->alive()) {
-            $this->entry('boss', 'boss', null, 'timeout', sprintf('%s resiste. El combate se alarga demasiado y el equipo se retira.', $boss->name()));
+            $this->entry('boss', 'boss', null, 'timeout', $maxRounds < self::MAX_ROUNDS
+                ? sprintf('Fin del asalto: %s sigue en pie y el equipo se repliega.', $boss->name())
+                : sprintf('%s resiste. El combate se alarga demasiado y el equipo se retira.', $boss->name()));
         }
 
         return new BattleResult(
